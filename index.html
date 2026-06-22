@@ -1584,7 +1584,7 @@
             const target = $(scannerTargetInput);
             if (target) {
                 target.value = decodedText;
-                target.focus();
+                target.dispatchEvent(new Event('input', { bubbles: true }));
             }
             $('scannerResult').textContent = '已识别: ' + decodedText;
             $('scannerResult').style.color = '#2ec4b6';
