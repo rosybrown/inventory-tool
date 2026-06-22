@@ -1,0 +1,2713 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>库存管理工具</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4361ee;
+            --success: #2ec4b6;
+            --warning: #ff9f1c;
+            --danger: #e71d36;
+            --bg: #f0f2f5;
+            --card-bg: #ffffff;
+            --text: #2b2d42;
+            --text-light: #8d99ae;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            padding-bottom: 60px;
+        }
+
+        /* Header */
+        .app-header {
+            background: linear-gradient(135deg, var(--primary), #3a0ca3);
+            color: white;
+            padding: 20px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .app-header h1 {
+            font-size: 20px;
+            font-weight: 600;
+            margin: 0;
+            letter-spacing: 0.5px;
+        }
+        .app-header .subtitle {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-top: 2px;
+        }
+
+        /* Tabs */
+        .tab-bar {
+            display: flex;
+            background: var(--card-bg);
+            border-bottom: 1px solid #e9ecef;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .tab-bar::-webkit-scrollbar { display: none; }
+        .tab-item {
+            flex: 1;
+            min-width: 72px;
+            padding: 12px 8px;
+            text-align: center;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+            user-select: none;
+        }
+        .tab-item:hover { background: #f8f9fa; }
+        .tab-item.active {
+            border-bottom-color: var(--primary);
+            color: var(--primary);
+            font-weight: 600;
+        }
+        .tab-item .tab-icon { font-size: 20px; display: block; margin-bottom: 2px; }
+        .tab-item .tab-label { font-size: 11px; color: var(--text-light); }
+        .tab-item.active .tab-label { color: var(--primary); }
+
+        /* Content */
+        .content { padding: 16px; max-width: 960px; margin: 0 auto; }
+        .panel { display: none; }
+        .panel.active { display: block; }
+
+        /* Cards */
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+        .card-header-custom {
+            padding: 16px 20px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .card-header-custom h5 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .card-body-custom { padding: 20px; }
+
+        /* Form */
+        .form-group { margin-bottom: 16px; }
+        .form-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-light);
+            margin-bottom: 6px;
+            display: block;
+        }
+        .form-input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1.5px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: border-color 0.2s;
+            outline: none;
+            background: #fafafa;
+        }
+        .form-input:focus {
+            border-color: var(--primary);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(67,97,238,0.1);
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        @media (min-width: 640px) {
+            .form-row { grid-template-columns: 1fr 1fr 1fr; }
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+        }
+        .btn:active { transform: scale(0.98); }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: #3451d1; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { background: #26a89c; }
+        .btn-warning { background: var(--warning); color: white; }
+        .btn-warning:hover { background: #e68d15; }
+        .btn-outline {
+            background: transparent;
+            border: 1.5px solid #e0e0e0;
+            color: var(--text);
+        }
+        .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+        .btn-sm {
+            padding: 6px 14px;
+            font-size: 13px;
+            width: auto;
+            border-radius: 8px;
+        }
+
+        /* Table */
+        .table-wrap { overflow-x: auto; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 10px 12px;
+            border-bottom: 2px solid #f0f0f0;
+            white-space: nowrap;
+        }
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #f5f5f5;
+            font-size: 14px;
+            vertical-align: middle;
+        }
+        tr:hover td { background: #f8f9fa; }
+        .sku-badge {
+            display: inline-block;
+            background: #edf2ff;
+            color: var(--primary);
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 13px;
+        }
+        .stock-ok { color: var(--success); font-weight: 600; }
+        .stock-low { color: var(--danger); font-weight: 600; }
+        .type-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .type-in { background: #d4edda; color: #155724; }
+        .type-out { background: #fff3cd; color: #856404; }
+        .type-return { background: #d1ecf1; color: #0c5460; }
+        .type-loss { background: #f8d7da; color: #721c24; }
+
+        /* Status bar */
+        .status-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--text);
+            color: white;
+            padding: 8px 20px;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+        }
+        .status-dot.ok { background: var(--success); }
+        .status-dot.err { background: var(--danger); }
+        .status-dot.wait { background: var(--warning); }
+
+        /* Toast */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 200;
+        }
+        .toast-msg {
+            padding: 12px 20px;
+            border-radius: 10px;
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            animation: slideIn 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .toast-msg.success { background: var(--success); }
+        .toast-msg.error { background: var(--danger); }
+        .toast-msg.info { background: var(--primary); }
+        @keyframes slideIn {
+            from { transform: translateX(100px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-light);
+        }
+        .empty-state i { font-size: 48px; margin-bottom: 12px; display: block; }
+        .empty-state p { margin: 0; font-size: 14px; }
+
+        /* Hint text */
+        .hint {
+            font-size: 12px;
+            color: var(--text-light);
+            margin-top: 4px;
+        }
+
+        /* Active issues indicator */
+        .active-count {
+            background: var(--danger);
+            color: white;
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+        .btn-return {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+        .btn-return:hover { background: #3451d1; }
+
+        /* ===== Login Page ===== */
+        .login-page {
+            display: flex; align-items: center; justify-content: center;
+            min-height: 100vh; background: linear-gradient(135deg, #4361ee, #3a0ca3);
+            padding: 20px;
+        }
+        .login-box {
+            background: white; border-radius: 16px; padding: 40px 36px;
+            width: 100%; max-width: 380px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .login-box h1 { font-size: 22px; font-weight: 700; text-align: center; margin-bottom: 4px; }
+        .login-box p { text-align: center; color: var(--text-light); font-size: 14px; margin-bottom: 28px; }
+        .login-box .form-input { background: #f5f6f8; border-color: transparent; margin-bottom: 0; }
+        .login-box .form-input:focus { background: white; }
+        .login-box .btn { margin-top: 8px; }
+        .login-error { color: var(--danger); font-size: 13px; text-align: center; margin-top: 12px; min-height: 20px; }
+
+        /* ===== Return Modal ===== */
+        .modal-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+            z-index: 500; align-items: center; justify-content: center; padding: 20px;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal-box {
+            background: white; border-radius: 16px; padding: 28px 24px;
+            width: 100%; max-width: 420px; box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+        }
+        .modal-box h3 { margin: 0 0 4px 0; font-size: 18px; font-weight: 700; }
+        .modal-box .sub { color: var(--text-light); font-size: 13px; margin-bottom: 20px; }
+        .modal-box .info-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; }
+        .modal-box .info-row .label { color: var(--text-light); }
+        .modal-box .info-row .val { font-weight: 600; }
+        .modal-box .divider { border: none; border-top: 1px solid #eee; margin: 16px 0; }
+        .modal-box .btn-row { display: flex; gap: 10px; margin-top: 20px; }
+        .modal-box .btn-row .btn { flex: 1; }
+
+        /* ===== Active Issues Grouped List ===== */
+        .active-search { width: 100%; padding: 10px 14px; border: 1.5px solid #e0e0e0; border-radius: 10px; font-size: 14px; outline: none; }
+        .active-search:focus { border-color: var(--primary); }
+        .person-group { border-bottom: 1px solid #f0f0f0; }
+        .person-group:last-child { border-bottom: none; }
+        .person-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 18px; cursor: pointer; user-select: none;
+            background: #f8f9fe; transition: background 0.15s;
+        }
+        .person-header:hover { background: #eef0fe; }
+        .person-header .name { font-weight: 600; font-size: 15px; color: var(--primary); }
+        .person-header .badge { background: var(--primary); color: white; border-radius: 12px; padding: 2px 10px; font-size: 12px; font-weight: 600; }
+        .person-header .arrow { transition: transform 0.2s; color: var(--text-light); font-size: 12px; }
+        .person-header .arrow.open { transform: rotate(90deg); }
+        .person-body { display: none; }
+        .person-body.open { display: block; }
+        .person-body table { margin: 0; }
+        .person-body td:first-child { padding-left: 24px; }
+
+        /* ===== Safety Stock Inline Edit ===== */
+        .stock-editable {
+            cursor: pointer; padding: 2px 6px; border-radius: 4px;
+            transition: background 0.15s; display: inline-block; min-width: 30px; text-align: center;
+        }
+        .stock-editable:hover { background: #eef0fe; }
+        .stock-editable:focus { outline: 2px solid var(--primary); background: white; }
+
+        /* ===== Loss Stats ===== */
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+        .stat-card { background: #f8f9fe; border-radius: 12px; padding: 16px; text-align: center; }
+        .stat-card .num { font-size: 28px; font-weight: 700; color: var(--primary); }
+        .stat-card .lbl { font-size: 12px; color: var(--text-light); margin-top: 4px; }
+        @media (max-width: 500px) { .stat-grid { grid-template-columns: 1fr 1fr; } }
+
+        /* ===== Scan Line Animation ===== */
+        @keyframes scanLine {
+            0%, 100% { top: 5%; }
+            50% { top: 90%; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Page -->
+    <div id="loginPage" class="login-page">
+        <div class="login-box">
+            <h1>库存管理工具</h1>
+            <p>刀具领用与归还管理系统</p>
+            <div class="form-group">
+                <label class="form-label">用户名</label>
+                <input type="text" class="form-input" id="loginUser" placeholder="请输入用户名" autocomplete="username" style="margin-bottom:12px">
+            </div>
+            <div class="form-group">
+                <label class="form-label">密码</label>
+                <input type="password" class="form-input" id="loginPass" placeholder="请输入密码" autocomplete="current-password" style="margin-bottom:4px">
+            </div>
+            <div class="login-error" id="loginError"></div>
+            <button class="btn btn-primary" id="btnLogin" onclick="handleLogin()">
+                <i class="bi bi-box-arrow-in-right"></i> 登 录
+            </button>
+            <div style="text-align:center;margin-top:16px;font-size:12px;color:var(--text-light)">
+                默认密码: 123456 &nbsp;|&nbsp; 登录后建议修改密码
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App (hidden until login) -->
+    <div id="mainApp" style="display:none">
+
+    <!-- Header -->
+    <div class="app-header">
+        <div>
+            <h1>库存管理工具</h1>
+            <div class="subtitle">刀具领用与归还管理系统</div>
+        </div>
+        <div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:1px">
+            <div style="display:flex;align-items:center;gap:14px;font-size:13px" id="headerRightRow"></div>
+            <div style="font-size:12px;opacity:0.8" id="headerStockInfo">加载中...</div>
+        </div>
+    </div>
+
+    <!-- Tab Bar -->
+    <div class="tab-bar">
+        <div class="tab-item active" data-tab="dashboard">
+            <span class="tab-icon"><i class="bi bi-grid-1x2"></i></span>
+            <span class="tab-label">库存</span>
+        </div>
+        <div class="tab-item" data-tab="inbound">
+            <span class="tab-icon"><i class="bi bi-box-arrow-in-down"></i></span>
+            <span class="tab-label">入库</span>
+        </div>
+        <div class="tab-item" data-tab="outbound">
+            <span class="tab-icon"><i class="bi bi-box-arrow-up"></i></span>
+            <span class="tab-label">出库</span>
+        </div>
+        <div class="tab-item" data-tab="active">
+            <span class="tab-icon"><i class="bi bi-clock-history"></i></span>
+            <span class="tab-label">在借</span>
+        </div>
+        <div class="tab-item" data-tab="history">
+            <span class="tab-icon"><i class="bi bi-journal-text"></i></span>
+            <span class="tab-label">记录</span>
+        </div>
+        <div class="tab-item" data-tab="loss">
+            <span class="tab-icon"><i class="bi bi-exclamation-triangle"></i></span>
+            <span class="tab-label">损耗</span>
+        </div>
+        <div class="tab-item" data-tab="users">
+            <span class="tab-icon"><i class="bi bi-people"></i></span>
+            <span class="tab-label">用户</span>
+        </div>
+        <div class="tab-item" data-tab="export">
+            <span class="tab-icon"><i class="bi bi-file-earmark-excel"></i></span>
+            <span class="tab-label">导出</span>
+        </div>
+    </div>
+
+    <!-- Content Panels -->
+    <div class="content">
+
+        <!-- ===== 库存看板 ===== -->
+        <div id="panel-dashboard" class="panel active">
+            <div class="card">
+                <div class="card-header-custom">
+                    <h5>实时库存</h5>
+                    <button class="btn btn-sm btn-outline" onclick="loadInventory()">
+                        <i class="bi bi-arrow-clockwise"></i> 刷新
+                    </button>
+                </div>
+                <div class="card-body-custom" style="padding:0">
+                    <div style="padding:12px 16px;border-bottom:1px solid #f0f0f0">
+                        <input type="text" class="active-search" id="invSearch" placeholder="🔍 搜索 SKU / 名称 / 库位..." oninput="onInvSearch()" style="margin:0">
+                    </div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>SKU</th>
+                                    <th>名称</th>
+                                    <th>单价</th>
+                                    <th>库存</th>
+                                    <th>安全库存</th>
+                                    <th>库位</th>
+                                    <th>状态</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inventoryBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== 入库 ===== -->
+        <div id="panel-inbound" class="panel">
+            <div class="card">
+                <div class="card-header-custom">
+                    <h5><i class="bi bi-box-arrow-in-down" style="color:var(--success)"></i> 入库操作</h5>
+                </div>
+                <div class="card-body-custom">
+                    <div class="form-group">
+                        <label class="form-label">SKU / 扫码</label>
+                        <div style="display:flex;gap:8px">
+                            <input type="text" class="form-input" id="in_sku" placeholder="扫描条码或手动输入 SKU" autofocus style="flex:1">
+                            <button type="button" class="btn btn-sm btn-outline" onclick="openScanner('in_sku')" style="width:auto;flex-shrink:0;padding:10px 14px">
+                                <i class="bi bi-camera"></i> 扫码
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">名称 *</label>
+                            <input type="text" class="form-input" id="in_name" placeholder="物品名称">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">单价</label>
+                            <input type="number" class="form-input" id="in_price" placeholder="0.00" step="0.01">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">数量 *</label>
+                            <input type="number" class="form-input" id="in_quantity" value="1" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">安全库存</label>
+                            <input type="number" class="form-input" id="in_safety" value="0" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">库位</label>
+                            <input type="text" class="form-input" id="in_location" placeholder="如 A-01-01">
+                        </div>
+                    </div>
+                    <button class="btn btn-success" id="btnInbound" onclick="handleInbound()">
+                        <i class="bi bi-check-lg"></i> 确认入库
+                    </button>
+                </div>
+            </div>
+
+            <!-- 批量导入 -->
+            <div class="card" id="batchImportCard">
+                <div class="card-header-custom">
+                    <h5><i class="bi bi-upload" style="color:var(--primary)"></i> 批量导入物料</h5>
+                </div>
+                <div class="card-body-custom">
+                    <p class="hint" style="margin-bottom:12px">
+                        上传 Excel 文件（.xlsx / .xls），自动识别 SKU 和名称列。<br>
+                        支持列名：SKU/sku/物料代码/编码 + 名称/品名/物料名称。其他列（单价、库位等）可选。
+                    </p>
+                    <div class="form-group">
+                        <input type="file" id="importFile" accept=".xlsx,.xls" style="display:none" onchange="previewImportFile()">
+                        <button class="btn btn-outline" onclick="document.getElementById('importFile').click()" style="width:auto">
+                            <i class="bi bi-file-earmark-excel"></i> 选择 Excel 文件
+                        </button>
+                    </div>
+                    <div id="importPreview" style="display:none">
+                        <p style="font-size:13px;margin-bottom:8px">预览（前 10 条）：</p>
+                        <div class="table-wrap" style="max-height:300px;overflow-y:auto">
+                            <table>
+                                <thead><tr><th>SKU</th><th>名称</th><th>单价</th><th>库位</th></tr></thead>
+                                <tbody id="importPreviewBody"></tbody>
+                            </table>
+                        </div>
+                        <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+                            <span id="importCount" style="font-size:13px;color:var(--text-light)"></span>
+                            <button class="btn btn-success" id="btnImport" onclick="handleBatchImport()" style="flex:1">
+                                <i class="bi bi-cloud-upload"></i> 确认导入
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== 出库 ===== -->
+        <div id="panel-outbound" class="panel">
+            <div class="card">
+                <div class="card-header-custom">
+                    <h5><i class="bi bi-box-arrow-up" style="color:var(--warning)"></i> 出库领用</h5>
+                </div>
+                <div class="card-body-custom">
+                    <div class="form-group">
+                        <label class="form-label">SKU / 名称搜索</label>
+                        <div style="display:flex;gap:8px">
+                            <div style="flex:1;position:relative">
+                                <input type="text" class="form-input" id="out_sku" placeholder="输入 SKU、扫码或搜索名称" autocomplete="off" style="width:100%">
+                                <div id="out_search_dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1.5px solid #e0e0e0;border-top:none;border-radius:0 0 8px 8px;max-height:200px;overflow-y:auto;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,0.1)"></div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline" onclick="openScanner('out_sku')" style="width:auto;flex-shrink:0;padding:10px 14px">
+                                <i class="bi bi-camera"></i> 扫码
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-group" id="out_item_info" style="display:none;margin-top:-8px">
+                        <div style="background:#edf2ff;border-radius:8px;padding:10px 14px;font-size:13px">
+                            <span id="out_item_name" style="font-weight:600;color:var(--primary)"></span>
+                            <span id="out_item_stock" style="margin-left:12px;color:var(--text-light)"></span>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">领用人 *</label>
+                            <input type="text" class="form-input" id="out_person" placeholder="领用人姓名">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">数量</label>
+                            <input type="number" class="form-input" id="out_quantity" value="1" min="1">
+                        </div>
+                    </div>
+                    <p class="hint">同一人不能重复领用未归还的同一刀具</p>
+                    <button class="btn btn-warning" id="btnOutbound" onclick="handleOutbound()">
+                        <i class="bi bi-send"></i> 确认领用
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== 在借记录 ===== -->
+        <div id="panel-active" class="panel">
+            <div class="card">
+                <div class="card-header-custom">
+                    <h5>当前在借记录</h5>
+                    <button class="btn btn-sm btn-outline" onclick="loadActiveIssues()">
+                        <i class="bi bi-arrow-clockwise"></i> 刷新
+                    </button>
+                </div>
+                <div class="card-body-custom">
+                    <input type="text" class="active-search" id="activeSearch" placeholder="🔍 搜索 SKU / 名称 / 领用人..." oninput="onActiveSearch()" style="margin-bottom:12px">
+                    <div class="table-wrap" id="activeGroupContainer">
+                        <div id="activeGroupList"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== 历史记录 ===== -->
+        <div id="panel-history" class="panel">
+            <div class="card">
+                <div class="card-header-custom">
+                    <h5>交易记录</h5>
+                    <button class="btn btn-sm btn-outline" onclick="loadHistory()">
+                        <i class="bi bi-arrow-clockwise"></i> 刷新
+                    </button>
+                </div>
+                <div class="card-body-custom" style="padding:0">
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>时间</th>
+                                    <th>SKU</th>
+                                    <th>类型</th>
+                                    <th>数量</th>
+                                    <th>操作人</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== 损耗统计 ===== -->
+        <div id="panel-loss" class="panel">
+            <div class="card">
+                <div class="card-header-custom">
+                    <h5><i class="bi bi-exclamation-triangle" style="color:var(--danger)"></i> 损耗统计</h5>
+                    <button class="btn btn-sm btn-outline" onclick="loadLossStats()">
+                        <i class="bi bi-arrow-clockwise"></i> 刷新
+                    </button>
+                </div>
+                <div class="card-body-custom">
+                    <div class="stat-grid" id="lossStatGrid">
+                        <div class="stat-card"><div class="num" id="lossTotalCount">0</div><div class="lbl">本月损耗笔数</div></div>
+                        <div class="stat-card"><div class="num" id="lossTotalQty">0</div><div class="lbl">本月损耗数量</div></div>
+                        <div class="stat-card"><div class="num" id="lossTotalAmount">¥0</div><div class="lbl">本月损耗金额</div></div>
+                    </div>
+                    <div style="display:flex;gap:8px;margin-bottom:12px">
+                        <input type="month" class="form-input" id="lossMonth" style="flex:1;width:auto" onchange="loadLossStats()">
+                        <select class="form-input" id="lossPersonFilter" style="flex:1;width:auto" onchange="loadLossStats()">
+                            <option value="">全部人员</option>
+                        </select>
+                    </div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>时间</th>
+                                    <th>SKU</th>
+                                    <th>名称</th>
+                                    <th>数量</th>
+                                    <th>金额</th>
+                                    <th>原因</th>
+                                    <th>领用人</th>
+                                </tr>
+                            </thead>
+                            <tbody id="lossBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== 用户管理 ===== -->
+        <div id="panel-users" class="panel">
+            <div class="card">
+                <div class="card-header-custom">
+                    <h5><i class="bi bi-people" style="color:var(--primary)"></i> 用户管理</h5>
+                    <button class="btn btn-sm btn-outline" onclick="loadUserList()">
+                        <i class="bi bi-arrow-clockwise"></i> 刷新
+                    </button>
+                </div>
+                <div class="card-body-custom">
+                    <div style="margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap">
+                        <input type="text" class="form-input" id="newUserName" placeholder="用户名" style="width:130px">
+                        <input type="password" class="form-input" id="newUserPass" placeholder="密码" style="width:130px" value="123456">
+                        <input type="text" class="form-input" id="newUserDisplay" placeholder="姓名" style="width:130px">
+                        <select class="form-input" id="newUserRole" style="width:110px">
+                            <option value="warehouse">仓管</option>
+                            <option value="purchase">采购</option>
+                            <option value="finance">财务</option>
+                            <option value="admin">管理员</option>
+                        </select>
+                        <button class="btn btn-sm btn-primary" onclick="addUser()" style="width:auto;padding:0 20px">
+                            <i class="bi bi-plus-lg"></i> 新增
+                        </button>
+                    </div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>用户名</th>
+                                    <th>姓名</th>
+                                    <th>角色</th>
+                                    <th>状态</th>
+                                    <th>创建时间</th>
+                                    <th>最后登录</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="userListBody"></tbody>
+                        </table>
+                    </div>
+                    <div style="margin-top:16px;padding-top:16px;border-top:1px solid #eee;display:flex;gap:10px;align-items:center">
+                        <span style="font-size:14px;font-weight:600;color:var(--primary)"><i class="bi bi-shield-lock"></i> 角色权限</span>
+                        <span style="font-size:12px;color:var(--text-light)">设置各角色可访问的功能模块</span>
+                        <button class="btn btn-sm btn-outline" onclick="openRolePermModal()" style="margin-left:auto">
+                            <i class="bi bi-gear"></i> 编辑
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== Excel 导出 ===== -->
+        <div id="panel-export" class="panel">
+            <div class="card">
+                <div class="card-header-custom">
+                    <h5><i class="bi bi-file-earmark-excel" style="color:#198754"></i> Excel 导出</h5>
+                </div>
+                <div class="card-body-custom">
+                    <p style="color:var(--text-light);font-size:13px;margin-bottom:20px">
+                        导出数据用于财务核算，包含库存清单、交易明细、在借记录和归还记录。
+                    </p>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                        <button class="btn btn-success" onclick="exportAll()">
+                            <i class="bi bi-download"></i> 导出全部（推荐）
+                        </button>
+                        <button class="btn btn-outline" onclick="exportInventory()">
+                            <i class="bi bi-table"></i> 仅库存清单
+                        </button>
+                        <button class="btn btn-outline" onclick="exportTransactions()">
+                            <i class="bi bi-journal-text"></i> 仅交易记录
+                        </button>
+                        <button class="btn btn-outline" onclick="exportActiveIssues()">
+                            <i class="bi bi-clock-history"></i> 仅在借记录
+                        </button>
+                    </div>
+                    <div id="exportStatus" style="margin-top:16px;font-size:13px;color:var(--text-light);display:none">
+                        <i class="bi bi-hourglass-split"></i> 正在生成 Excel 文件...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div> <!-- /content -->
+</div> <!-- /mainApp -->
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+        <span><span class="status-dot wait" id="statusDot"></span> <span id="statusText">连接中...</span></span>
+        <span id="dataCount">-</span>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Change Password Modal -->
+    <div class="modal-overlay" id="pwModal">
+        <div class="modal-box">
+            <h3>修改密码</h3>
+            <div class="sub">当前登录：<span id="pwUserDisplay">-</span></div>
+            <div class="form-group">
+                <label class="form-label">原密码</label>
+                <input type="password" class="form-input" id="pwOld" placeholder="输入原密码">
+            </div>
+            <div class="form-group">
+                <label class="form-label">新密码</label>
+                <input type="password" class="form-input" id="pwNew" placeholder="输入新密码">
+            </div>
+            <div class="form-group">
+                <label class="form-label">确认新密码</label>
+                <input type="password" class="form-input" id="pwConfirm" placeholder="再次输入新密码">
+            </div>
+            <div class="login-error" id="pwError"></div>
+            <div class="btn-row">
+                <button class="btn btn-outline" id="pwCancelBtn" onclick="closePwModal()">取消</button>
+                <button class="btn btn-primary" onclick="changePassword()">
+                    <i class="bi bi-check-lg"></i> 确认修改
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Force Change Password Modal (first login with default password) -->
+    <div class="modal-overlay" id="forcePwModal">
+        <div class="modal-box" style="max-width:400px">
+            <div style="text-align:center;margin-bottom:16px">
+                <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#4361ee,#3a0ca3);display:inline-flex;align-items:center;justify-content:center;margin-bottom:8px">
+                    <i class="bi bi-shield-lock" style="font-size:26px;color:white"></i>
+                </div>
+            </div>
+            <h3 style="text-align:center">安全提示</h3>
+            <div class="sub" style="text-align:center">检测到您正在使用默认密码，为确保账户安全，请立即修改密码后再继续使用。</div>
+            <div class="form-group">
+                <label class="form-label">原密码</label>
+                <input type="password" class="form-input" id="forcePwOld" placeholder="输入原密码">
+            </div>
+            <div class="form-group">
+                <label class="form-label">新密码</label>
+                <input type="password" class="form-input" id="forcePwNew" placeholder="输入新密码（至少4位）">
+            </div>
+            <div class="form-group">
+                <label class="form-label">确认新密码</label>
+                <input type="password" class="form-input" id="forcePwConfirm" placeholder="再次输入新密码">
+            </div>
+            <div class="login-error" id="forcePwError"></div>
+            <div class="btn-row">
+                <button class="btn btn-primary" style="width:100%" onclick="forceChangePassword()">
+                    <i class="bi bi-check-lg"></i> 修改密码并继续
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Return Modal -->
+    <div class="modal-overlay" id="returnModal">
+        <div class="modal-box">
+            <h3>归还</h3>
+            <div class="sub" id="returnSub">确认归还信息</div>
+            <div class="info-row"><span class="label">SKU</span><span class="val" id="returnSku">-</span></div>
+            <div class="info-row"><span class="label">名称</span><span class="val" id="returnName">-</span></div>
+            <div class="info-row"><span class="label">领用人</span><span class="val" id="returnPerson">-</span></div>
+            <div class="info-row"><span class="label">在借数量</span><span class="val" id="returnQtyBorrowed">-</span></div>
+            <hr class="divider">
+            <div class="form-group">
+                <label class="form-label">归还数量</label>
+                <input type="number" class="form-input" id="returnQty" min="1" value="1" onchange="onReturnQtyChange()">
+                <div class="hint" id="returnQtyHint" style="margin-top:6px;font-size:12px;color:var(--text-light)"></div>
+            </div>
+            <div class="form-group" id="lossGroup" style="display:none">
+                <label class="form-label">损耗数量 <span style="color:var(--danger);font-weight:600" id="lossQtyDisplay">0</span></label>
+                <input type="text" class="form-input" id="lossQtyReadonly" readonly style="background:#f5f5f5;color:var(--danger);font-weight:600">
+                <div class="hint" style="margin-top:4px;font-size:12px;color:var(--text-light)">归还数量少于在借数量时，差额自动记为损耗</div>
+            </div>
+            <div class="form-group" id="lossReasonGroup" style="display:none">
+                <label class="form-label">损耗原因</label>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                    <select class="form-input" id="returnReason" style="flex:1;min-width:120px" onchange="onLossReasonChange()">
+                        <option value="丢失">丢失</option>
+                        <option value="__custom__">自定义...</option>
+                    </select>
+                    <input type="text" class="form-input" id="returnReasonCustom" placeholder="填写具体原因" style="display:none;flex:1;min-width:150px">
+                </div>
+            </div>
+            <div class="btn-row">
+                <button class="btn btn-outline" onclick="closeReturnModal()">取消</button>
+                <button class="btn btn-primary" onclick="confirmReturn()">
+                    <i class="bi bi-check-lg"></i> 确认归还
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scanner Modal -->
+    <div id="scannerModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.92);z-index:300;flex-direction:column;align-items:center;justify-content:center">
+        <div style="width:100%;max-width:500px;padding:16px">
+            <div style="color:white;text-align:center;margin-bottom:10px;font-size:16px;font-weight:600">
+                <i class="bi bi-camera"></i> 扫描条码/二维码
+            </div>
+            <div style="position:relative;border-radius:16px;overflow:hidden;min-height:280px">
+                <div id="scannerReader" style="width:100%;border-radius:16px;overflow:hidden"></div>
+                <!-- Scan guide overlay -->
+                <div id="scanGuideOverlay" style="pointer-events:none;position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+                    <div style="width:85%;max-width:340px;aspect-ratio:1.6/1;position:relative">
+                        <!-- Corners -->
+                        <div style="position:absolute;top:0;left:0;width:24px;height:24px;border-top:3px solid #2ec4b6;border-left:3px solid #2ec4b6;border-radius:4px 0 0 0"></div>
+                        <div style="position:absolute;top:0;right:0;width:24px;height:24px;border-top:3px solid #2ec4b6;border-right:3px solid #2ec4b6;border-radius:0 4px 0 0"></div>
+                        <div style="position:absolute;bottom:0;left:0;width:24px;height:24px;border-bottom:3px solid #2ec4b6;border-left:3px solid #2ec4b6;border-radius:0 0 0 4px"></div>
+                        <div style="position:absolute;bottom:0;right:0;width:24px;height:24px;border-bottom:3px solid #2ec4b6;border-right:3px solid #2ec4b6;border-radius:0 0 4px 0"></div>
+                        <!-- Scan line animation -->
+                        <div id="scanLineAnim" style="position:absolute;left:5%;right:5%;height:2px;background:linear-gradient(90deg,transparent,#2ec4b6,transparent);animation:scanLine 2s ease-in-out infinite;top:0"></div>
+                        <!-- Hint text -->
+                        <div style="position:absolute;bottom:-30px;left:0;right:0;text-align:center;font-size:12px;color:rgba(255,255,255,0.7)">将条码/二维码对准框内，保持 10-20cm 距离</div>
+                    </div>
+                </div>
+            </div>
+            <div id="scannerResult" style="color:#2ec4b6;text-align:center;margin-top:12px;font-size:14px;min-height:20px"></div>
+            <button onclick="closeScanner()" style="margin-top:10px;width:100%;padding:12px;border:none;border-radius:10px;background:rgba(255,255,255,0.15);color:white;font-size:15px;font-weight:600;cursor:pointer;backdrop-filter:blur(4px)">
+                <i class="bi bi-x-lg"></i> 关闭扫描
+            </button>
+        </div>
+    </div>
+
+    <!-- Role Permission Modal -->
+    <div class="modal-overlay" id="rolePermModal">
+        <div class="modal-box" style="max-width:500px">
+            <h3><i class="bi bi-shield-lock"></i> 角色权限设置</h3>
+            <div class="sub">为每个角色设置可访问的功能模块</div>
+            <div style="display:flex;gap:0;margin-bottom:16px;border-bottom:2px solid #eee">
+                <span class="role-perm-tab" data-role="warehouse" onclick="selectRolePermTab('warehouse')" style="padding:8px 14px;cursor:pointer;border-bottom:2px solid var(--primary);font-size:13px;font-weight:600;color:var(--primary)">仓管</span>
+                <span class="role-perm-tab" data-role="purchase" onclick="selectRolePermTab('purchase')" style="padding:8px 14px;cursor:pointer;border-bottom:2px solid transparent;font-size:13px;color:var(--text-light)">采购</span>
+                <span class="role-perm-tab" data-role="finance" onclick="selectRolePermTab('finance')" style="padding:8px 14px;cursor:pointer;border-bottom:2px solid transparent;font-size:13px;color:var(--text-light)">财务</span>
+                <span class="role-perm-tab" data-role="admin" onclick="selectRolePermTab('admin')" style="padding:8px 14px;cursor:pointer;border-bottom:2px solid transparent;font-size:13px;color:var(--text-light)">管理员</span>
+            </div>
+            <div id="rolePermLabel" style="font-size:14px;font-weight:600;margin-bottom:8px"></div>
+            <div style="margin:12px 0">
+                <div id="rolePermCheckboxList" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
+            </div>
+            <hr class="divider">
+            <div class="btn-row">
+                <button class="btn btn-primary" onclick="saveRolePerm()"><i class="bi bi-check-lg"></i> 保存</button>
+                <button class="btn btn-outline" onclick="closeRolePermModal()">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script>
+    (function() {
+        // ========== Supabase ==========
+        const SUPABASE_URL = window.__ENV__?.SUPABASE_URL || '';
+        const SUPABASE_KEY = window.__ENV__?.SUPABASE_KEY || '';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // ========== Helpers ==========
+        const ROLE_LABELS = { 'admin':'管理员','warehouse':'仓管','purchase':'采购','finance':'财务' };
+        const TX_TYPE_LABELS = { 'IN': '入库', 'OUT': '出库', 'RETURN': '归还', 'LOSS': '损耗' };
+
+        function $(id) { return document.getElementById(id); }
+        function esc(s) { return s ? String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])) : ''; }
+        function roleLabel(role) { return ROLE_LABELS[role] || role; }
+
+        function setStatus(text, state) {
+            $('statusText').textContent = text;
+            const dot = $('statusDot');
+            dot.className = 'status-dot ' + (state === 'ok' ? 'ok' : state === 'err' ? 'err' : 'wait');
+        }
+
+        function showToast(msg, type) {
+            const el = document.createElement('div');
+            el.className = 'toast-msg ' + type;
+            el.textContent = msg;
+            $('toastContainer').appendChild(el);
+            setTimeout(() => el.remove(), 3000);
+        }
+
+        function formatTime(ts) {
+            if (!ts) return '-';
+            const d = new Date(ts);
+            return d.toLocaleString('zh-CN', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+        }
+
+        function daysSince(ts) {
+            if (!ts) return 0;
+            return Math.floor((Date.now() - new Date(ts).getTime()) / 86400000);
+        }
+
+        // ========== Login / Session ==========
+        let currentUser = null; // { username, display_name, role }
+        let rolePermissions = null; // { 'admin': [...], 'warehouse': [...], ... }
+
+        async function enterApp(user) {
+            currentUser = user;
+            // Load role permissions from server
+            await loadRolePermissions();
+
+            // Persist login session (no password stored)
+            try { localStorage.setItem('inventory_user', JSON.stringify({
+                username: user.username,
+                display_name: user.display_name,
+                role: user.role
+            })); } catch(e) {}
+
+            $('loginPage').style.display = 'none';
+            $('mainApp').style.display = 'block';
+            applyRoleVisibility();
+            // Switch to first visible tab
+            const firstTab = document.querySelector('.tab-item:not([style*="display: none"]):not([style*="display:none"])');
+            if (firstTab) {
+                document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+                firstTab.classList.add('active');
+                $('panel-' + firstTab.dataset.tab).classList.add('active');
+            }
+            // Build header row: user info | change password | logout
+            $('headerRightRow').innerHTML =
+                '<span><i class="bi bi-person-circle"></i> ' + user.display_name + ' · ' + roleLabel(user.role) + '</span>' +
+                '<span style="cursor:pointer;opacity:0.7" onclick="openPwModal()" title="修改密码"><i class="bi bi-key"></i> 密码</span>' +
+                '<span style="cursor:pointer;opacity:0.7" onclick="handleLogout()" title="退出登录"><i class="bi bi-box-arrow-right"></i> 退出</span>';
+            loadInventory(true);
+            await loadAllItems();
+        }
+
+        function handleLogin() {
+            const u = $('loginUser').value.trim();
+            const p = $('loginPass').value.trim();
+            const btn = $('btnLogin');
+            const err = $('loginError');
+
+            if (!u || !p) { err.textContent = '请输入用户名和密码'; return; }
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bi bi-hourglass-split"></i> 登录中...';
+            err.textContent = '';
+
+            checkLogin(u, p).then(async user => {
+                if (user) {
+                    await enterApp(user);
+                    // 检测使用默认密码，强制修改
+                    if (p === '123456') {
+                        openForcePwModal();
+                    }
+                } else {
+                    err.textContent = '用户名或密码错误';
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> 登 录';
+                }
+            }).catch(e => {
+                err.textContent = '登录失败: ' + e.message;
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> 登 录';
+            });
+        }
+
+        function handleLogout() {
+            currentUser = null;
+            $('loginPage').style.display = 'flex';
+            $('mainApp').style.display = 'none';
+            $('loginUser').value = '';
+            $('loginPass').value = '';
+            $('loginError').textContent = '';
+            $('headerRightRow').innerHTML = '';
+            closeForcePwModal();
+            try { localStorage.removeItem('inventory_user'); } catch(e) {}
+            // Reset login button state
+            const btn = $('btnLogin');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> 登 录';
+        }
+
+        // Try to restore session from localStorage on page load
+        async function tryRestoreSession() {
+            try {
+                const raw = localStorage.getItem('inventory_user');
+                if (!raw) return false;
+                const saved = JSON.parse(raw);
+                if (!saved || !saved.username) return false;
+
+                const { data, error } = await supabase.rpc('verify_session', {
+                    p_username: saved.username
+                });
+                if (error) throw error;
+                if (data && data.valid) {
+                    const user = {
+                        username: data.username,
+                        display_name: data.display_name,
+                        role: data.role
+                    };
+                    await enterApp(user);
+                    return true;
+                }
+            } catch(e) {
+                // Session invalid or network error — show login
+            }
+            try { localStorage.removeItem('inventory_user'); } catch(e) {}
+            return false;
+        }
+
+        async function checkLogin(username, password) {
+            const { data, error } = await supabase.rpc('check_login', {
+                p_username: username,
+                p_password: password
+            });
+            if (error) throw error;
+            if (data && data.success) {
+                return {
+                    username: data.username,
+                    display_name: data.display_name,
+                    role: data.role,
+                    permissions: data.permissions
+                };
+            }
+            return null;
+        }
+
+        // ========== Password Change ==========
+        function openPwModal() {
+            $('pwUserDisplay').textContent = currentUser ? (currentUser.display_name + ' (' + currentUser.username + ')') : '-';
+            $('pwOld').value = '';
+            $('pwNew').value = '';
+            $('pwConfirm').value = '';
+            $('pwError').textContent = '';
+            $('pwModal').classList.add('show');
+            setTimeout(() => $('pwOld').focus(), 100);
+        }
+
+        function closePwModal() {
+            $('pwModal').classList.remove('show');
+        }
+
+        // ========== Force Password Change (Default Password Detected) ==========
+        function openForcePwModal() {
+            $('forcePwOld').value = '';
+            $('forcePwNew').value = '';
+            $('forcePwConfirm').value = '';
+            $('forcePwError').textContent = '';
+            $('forcePwModal').classList.add('show');
+            setTimeout(() => $('forcePwOld').focus(), 100);
+        }
+
+        function closeForcePwModal() {
+            $('forcePwModal').classList.remove('show');
+        }
+
+        async function forceChangePassword() {
+            const oldPw = $('forcePwOld').value.trim();
+            const newPw = $('forcePwNew').value.trim();
+            const confirmPw = $('forcePwConfirm').value.trim();
+            const err = $('forcePwError');
+
+            if (!oldPw || !newPw || !confirmPw) { err.textContent = '请填写所有字段'; return; }
+            if (newPw.length < 4) { err.textContent = '新密码至少 4 位'; return; }
+            if (newPw !== confirmPw) { err.textContent = '两次输入的新密码不一致'; return; }
+            if (newPw === '123456') { err.textContent = '新密码不能与默认密码相同'; return; }
+
+            try {
+                const { data, error } = await supabase.rpc('change_password', {
+                    p_username: currentUser.username,
+                    p_old_password: oldPw,
+                    p_new_password: newPw
+                });
+                if (error) throw error;
+                if (data && data.success) {
+                    showToast('密码已修改，欢迎使用系统', 'success');
+                    closeForcePwModal();
+                } else {
+                    err.textContent = data?.message || '修改失败';
+                }
+            } catch (e) {
+                err.textContent = '修改失败: ' + e.message;
+            }
+        }
+
+        async function changePassword() {
+            const oldPw = $('pwOld').value.trim();
+            const newPw = $('pwNew').value.trim();
+            const confirmPw = $('pwConfirm').value.trim();
+            const err = $('pwError');
+
+            if (!oldPw || !newPw || !confirmPw) { err.textContent = '请填写所有字段'; return; }
+            if (newPw.length < 4) { err.textContent = '新密码至少 4 位'; return; }
+            if (newPw !== confirmPw) { err.textContent = '两次输入的新密码不一致'; return; }
+
+            setStatus('修改密码...', 'wait');
+            try {
+                const { data, error } = await supabase.rpc('change_password', {
+                    p_username: currentUser.username,
+                    p_old_password: oldPw,
+                    p_new_password: newPw
+                });
+                if (error) throw error;
+                if (data && data.success) {
+                    showToast('密码已修改', 'success');
+                    closePwModal();
+                } else {
+                    err.textContent = data?.message || '修改失败';
+                }
+            } catch (e) {
+                err.textContent = '修改失败: ' + e.message;
+            } finally {
+                setStatus('已连接', 'ok');
+            }
+        }
+
+        // ========== User Management (admin) ==========
+        async function loadUserList() {
+            setStatus('加载用户...', 'wait');
+            try {
+                const { data, error } = await supabase.rpc('admin_list_users', {
+                    p_admin_username: currentUser.username
+                });
+                if (error) throw error;
+                if (!data || !data.success) { showToast(data?.message || '加载失败', 'error'); setStatus('已连接', 'ok'); return; }
+
+                const users = data.users || [];
+                const tbody = $('userListBody');
+                if (users.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><i class="bi bi-people"></i><p>暂无用户</p></div></td></tr>';
+                } else {
+                    tbody.innerHTML = users.map(u =>
+                        '<tr>' +
+                        '<td><span class="sku-badge">' + esc(u.username) + '</span></td>' +
+                        '<td>' + esc(u.display_name) + '</td>' +
+                        '<td>' + roleLabel(u.role) + '</td>' +
+                        '<td>' + (u.is_active ? '<span style="color:var(--success)">正常</span>' : '<span style="color:var(--danger)">停用</span>') + '</td>' +
+                        '<td style="font-size:12px;color:var(--text-light)">' + (u.created_at ? new Date(u.created_at).toLocaleDateString('zh-CN') : '-') + '</td>' +
+                        '<td style="font-size:12px;color:var(--text-light)">' + (u.last_login ? new Date(u.last_login).toLocaleString('zh-CN', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '-') + '</td>' +
+                        '<td style="white-space:nowrap">' +
+                        (u.username !== 'admin'
+                            ? '<button class="btn-return" onclick="resetUserPassword(\'' + esc(u.username) + '\')" style="margin-right:4px">重置密码</button><button class="btn-return" onclick="deleteUser(\'' + esc(u.username) + '\')" style="background:var(--danger)">删除</button>'
+                            : '<span style="color:var(--text-light);font-size:12px">-</span>') +
+                        '</td>' +
+                        '</tr>'
+                    ).join('');
+                }
+                setStatus('已连接', 'ok');
+            } catch (err) {
+                setStatus('加载失败', 'err');
+                showToast('加载用户失败: ' + err.message, 'error');
+            }
+        }
+
+        async function addUser() {
+            const u = $('newUserName').value.trim();
+            const p = $('newUserPass').value.trim();
+            const d = $('newUserDisplay').value.trim();
+            const r = $('newUserRole').value;
+            if (!u || !p || !d) return showToast('请填写用户名、密码和姓名', 'error');
+            if (p.length < 4) return showToast('密码至少 4 位', 'error');
+
+            setStatus('创建用户...', 'wait');
+            try {
+                const { data, error } = await supabase.rpc('admin_create_user', {
+                    p_admin_username: currentUser.username,
+                    p_username: u,
+                    p_password: p,
+                    p_display_name: d,
+                    p_role: r
+                });
+                if (error) throw error;
+                if (data && data.success) {
+                    showToast(data.message, 'success');
+                    $('newUserName').value = '';
+                    $('newUserDisplay').value = '';
+                    $('newUserPass').value = '123456';
+                    loadUserList();
+                } else {
+                    showToast(data?.message || '创建失败', 'error');
+                }
+            } catch (err) {
+                showToast('创建失败: ' + err.message, 'error');
+            } finally {
+                setStatus('已连接', 'ok');
+            }
+        }
+
+        async function deleteUser(username) {
+            if (!confirm('确认删除用户「' + username + '」？此操作不可撤销。')) return;
+            setStatus('删除用户...', 'wait');
+            try {
+                const { data, error } = await supabase.rpc('admin_delete_user', {
+                    p_admin_username: currentUser.username,
+                    p_username: username
+                });
+                if (error) throw error;
+                if (data && data.success) {
+                    showToast(data.message, 'success');
+                    loadUserList();
+                } else {
+                    showToast(data?.message || '删除失败', 'error');
+                }
+            } catch (err) {
+                showToast('删除失败: ' + err.message, 'error');
+            } finally {
+                setStatus('已连接', 'ok');
+            }
+        }
+
+        async function resetUserPassword(username) {
+            const newPw = prompt('为「' + username + '」设置新密码（至少 4 位）:', '123456');
+            if (!newPw || newPw.length < 4) return showToast('密码至少 4 位', 'error');
+
+            setStatus('重置密码...', 'wait');
+            try {
+                const { data, error } = await supabase.rpc('admin_reset_password', {
+                    p_admin_username: currentUser.username,
+                    p_username: username,
+                    p_new_password: newPw
+                });
+                if (error) throw error;
+                if (data && data.success) {
+                    showToast(data.message, 'success');
+                } else {
+                    showToast(data?.message || '重置失败', 'error');
+                }
+            } catch (err) {
+                showToast('重置失败: ' + err.message, 'error');
+            } finally {
+                setStatus('已连接', 'ok');
+            }
+        }
+
+        // ========== Role Permission Management ==========
+        let rolePermEditRole = null;
+
+        function openRolePermModal() {
+            if (!rolePermissions) {
+                showToast('角色权限数据未加载', 'error');
+                return;
+            }
+            // Pre-fill with current role permissions
+            const container = $('rolePermCheckboxList');
+            container.innerHTML = ALL_TABS.map(t =>
+                '<label style="display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:6px;background:#f8f9fa;cursor:pointer">' +
+                '<input type="checkbox" value="' + t.id + '"> ' +
+                '<span style="font-size:14px">' + t.label + '</span>' +
+                '</label>'
+            ).join('');
+            // Show first role's permissions
+            selectRolePermTab('warehouse');
+            $('rolePermModal').classList.add('show');
+        }
+
+        function closeRolePermModal() {
+            $('rolePermModal').classList.remove('show');
+            rolePermEditRole = null;
+        }
+
+        function selectRolePermTab(role) {
+            rolePermEditRole = role;
+            $('rolePermLabel').textContent = '角色：' + roleLabel(role);
+
+            // Update tab buttons style
+            document.querySelectorAll('.role-perm-tab').forEach(tab => {
+                tab.style.borderBottomColor = tab.dataset.role === role ? 'var(--primary)' : 'transparent';
+                tab.style.color = tab.dataset.role === role ? 'var(--primary)' : 'var(--text-light)';
+                tab.style.fontWeight = tab.dataset.role === role ? '600' : '400';
+            });
+
+            // Set checkboxes
+            const perms = rolePermissions[role] || [];
+            $('rolePermCheckboxList').querySelectorAll('input[type=checkbox]').forEach(cb => {
+                cb.checked = perms.includes(cb.value);
+            });
+        }
+
+        async function saveRolePerm() {
+            if (!rolePermEditRole) return;
+            const checked = [];
+            $('rolePermCheckboxList').querySelectorAll('input[type=checkbox]:checked').forEach(cb => {
+                checked.push(cb.value);
+            });
+
+            setStatus('保存角色权限...', 'wait');
+            try {
+                const { data, error } = await supabase.rpc('admin_set_role_permissions', {
+                    p_admin_username: currentUser.username,
+                    p_role: rolePermEditRole,
+                    p_permissions: checked
+                });
+                if (error) throw error;
+                if (data && data.success) {
+                    // Update local cache
+                    rolePermissions[rolePermEditRole] = checked;
+                    showToast(data.message, 'success');
+                    closeRolePermModal();
+                    // If current user's role was changed, re-apply visibility
+                    if (rolePermEditRole === currentUser.role) {
+                        applyRoleVisibility();
+                    }
+                } else {
+                    showToast(data?.message || '保存失败', 'error');
+                }
+            } catch (err) {
+                showToast('保存角色权限失败: ' + err.message, 'error');
+            } finally {
+                setStatus('已连接', 'ok');
+            }
+        }
+
+        const ALL_TABS = [
+            { id: 'dashboard', label: '库存' },
+            { id: 'inbound',   label: '入库' },
+            { id: 'outbound',  label: '出库' },
+            { id: 'active',    label: '在借' },
+            { id: 'history',   label: '记录' },
+            { id: 'loss',      label: '损耗' },
+            { id: 'users',     label: '用户' },
+            { id: 'export',    label: '导出' }
+        ];
+
+        async function loadRolePermissions() {
+            try {
+                const { data, error } = await supabase.rpc('get_role_permissions');
+                if (!error && data) {
+                    rolePermissions = data;
+                }
+            } catch(e) {
+                console.warn('loadRolePermissions failed, fallback to all tabs:', e);
+            }
+        }
+
+        function getEffectiveTabs(user) {
+            if (!user || !user.role) return [];
+            return (rolePermissions && rolePermissions[user.role]) || [];
+        }
+
+        function applyRoleVisibility() {
+            if (!currentUser) return;
+            const allowed = getEffectiveTabs(currentUser);
+            if (!allowed.length) {
+                document.querySelectorAll('.tab-item').forEach(tab => {
+                    tab.style.display = '';
+                });
+                return;
+            }
+            document.querySelectorAll('.tab-item').forEach(tab => {
+                tab.style.display = allowed.includes(tab.dataset.tab) ? '' : 'none';
+            });
+            // Batch import: admin or user with 'inbound' permission only
+            const batchCard = $('batchImportCard');
+            if (batchCard) {
+                batchCard.style.display = allowed.includes('inbound') ? '' : 'none';
+            }
+        }
+
+        // ========== Tab Switching ==========
+        document.querySelectorAll('.tab-item').forEach(tab => {
+            tab.addEventListener('click', function() {
+                const name = this.dataset.tab;
+                document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+                this.classList.add('active');
+                $('panel-' + name).classList.add('active');
+                if (name === 'dashboard') loadInventory();
+                if (name === 'history') loadHistory();
+                if (name === 'active') loadActiveIssues();
+                if (name === 'loss') loadLossStats();
+                if (name === 'users') loadUserList();
+            });
+        });
+
+        // Enter key on login form
+        // ========== Prefetch data before login ==========
+        async function prefetchData() {
+            try {
+                // Pre-cache inventory data so loadInventory(true) finds it instantly
+                const { data } = await supabase.from('inventory_items').select('*').limit(200);
+                if (data && data.length) {
+                    saveCache(CACHE_KEY_INV, data);
+                    localStorage.setItem(CACHE_KEY_TIME, Date.now().toString());
+                }
+                // Pre-load all items for search dropdowns
+                const { data: allItems } = await supabase.from('inventory_items').select('sku, name, total_stock, price, location, safety_stock');
+                if (allItems) allItemsCache = allItems;
+            } catch(e) {
+                // Silent fail — user can still login and load normally
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            $('in_sku').addEventListener('input', () => onInboundSkuInput());
+            $('in_sku').addEventListener('change', () => onInboundSkuInput());
+            $('out_sku').addEventListener('input', () => onSkuInput('out_sku'));
+            $('out_sku').addEventListener('blur', () => setTimeout(() => $('out_search_dropdown').style.display = 'none', 200));
+            const restored = await tryRestoreSession();
+            if (!restored) {
+                $('loginPass').addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
+                $('loginUser').addEventListener('keydown', e => { if (e.key === 'Enter') $('loginPass').focus(); });
+                prefetchData();
+            } else {
+                prefetchData();
+            }
+        });
+
+        // ========== Camera Scanner ==========
+        let html5QrCode = null;
+        let scannerTargetInput = null;
+
+        function openScanner(targetInputId) {
+            if (typeof Html5Qrcode === 'undefined' || typeof Html5QrcodeSupportedFormats === 'undefined') {
+                showToast('扫码组件加载失败，请刷新页面或使用手动输入', 'error');
+                return;
+            }
+            scannerTargetInput = targetInputId;
+            const modal = $('scannerModal');
+            modal.style.display = 'flex';
+            $('scannerResult').textContent = '';
+
+            if (html5QrCode) {
+                try { html5QrCode.clear(); } catch(e) {}
+            }
+            html5QrCode = new Html5Qrcode('scannerReader');
+
+            html5QrCode.start(
+                { facingMode: 'environment' },
+                {
+                    fps: 15,
+                    qrbox: function(viewfinderWidth, viewfinderHeight) {
+                        // 扫描框占据摄像头画面的 80%，最小 280x160，适配 10-20cm 扫码距离
+                        const w = Math.max(280, Math.floor(viewfinderWidth * 0.8));
+                        const h = Math.max(160, Math.floor(viewfinderHeight * 0.7));
+                        return { width: w, height: h };
+                    },
+                    aspectRatio: 1.77,
+                    disableFlip: true,
+                    showTorchButtonIfSupported: true,
+                    showZoomSliderIfSupported: true,
+                    defaultZoomValueIfSupported: 1.5,
+                    formatsToSupport: [
+                        Html5QrcodeSupportedFormats.QR_CODE,
+                        Html5QrcodeSupportedFormats.CODE_128,
+                        Html5QrcodeSupportedFormats.CODE_39,
+                        Html5QrcodeSupportedFormats.EAN_13,
+                        Html5QrcodeSupportedFormats.EAN_8,
+                        Html5QrcodeSupportedFormats.UPC_A,
+                        Html5QrcodeSupportedFormats.UPC_E,
+                        Html5QrcodeSupportedFormats.ITF,
+                        Html5QrcodeSupportedFormats.CODE_93
+                    ]
+                },
+                (decodedText) => {
+                    onScanSuccess(decodedText);
+                },
+                () => {}
+            ).then(() => {
+                // 尝试启用连续自动对焦
+                try {
+                    const vid = document.querySelector('#scannerReader video');
+                    if (vid && vid.srcObject) {
+                        const tr = vid.srcObject.getVideoTracks()[0];
+                        if (tr && tr.getCapabilities && tr.getCapabilities().focusMode) {
+                            tr.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+                        }
+                    }
+                } catch(e) {}
+            }).catch(err => {
+                console.error('Camera error:', err);
+                $('scannerResult').textContent = '无法启动摄像头: ' + err;
+                $('scannerResult').style.color = '#ff6b6b';
+            });
+        }
+
+        function onScanSuccess(decodedText) {
+            const target = $(scannerTargetInput);
+            if (target) {
+                target.value = decodedText;
+                target.focus();
+            }
+            $('scannerResult').textContent = '已识别: ' + decodedText;
+            $('scannerResult').style.color = '#2ec4b6';
+            showToast('扫码成功: ' + decodedText, 'success');
+
+            // 扫到后自动关闭
+            setTimeout(() => closeScanner(), 800);
+        }
+
+        function closeScanner() {
+            if (html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    html5QrCode.clear();
+                    html5QrCode = null;
+                }).catch(() => {
+                    html5QrCode = null;
+                });
+            }
+            $('scannerModal').style.display = 'none';
+            scannerTargetInput = null;
+        }
+
+        // ========== SKU/名称搜索 ==========
+        let skuLookupTimer = null;
+        let allItemsCache = [];
+
+        async function loadAllItems() {
+            if (allItemsCache.length > 0) return allItemsCache;
+            try {
+                const items = await fetchAll('inventory_items', 'sku', true, 500);
+                if (items.length > 0) allItemsCache = items;
+            } catch(e) {
+                console.warn('loadAllItems failed:', e);
+            }
+            return allItemsCache;
+        }
+
+
+        async function searchItems(query) {
+            const items = await loadAllItems();
+            const q = query.toLowerCase();
+            return items.filter(i => i.sku.toLowerCase().includes(q) || i.name.toLowerCase().includes(q));
+        }
+
+        function showSearchDropdown(results) {
+            const dd = $('out_search_dropdown');
+            if (results.length === 0) { dd.style.display = 'none'; return; }
+            dd.innerHTML = results.slice(0, 8).map(item =>
+                '<div style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:13px" onmouseover="this.style.background=\'#f8f9fa\'" onmouseout="this.style.background=\'\'" onclick="selectOutboundItem(\'' + esc(item.sku) + '\')">' +
+                '<span style="font-weight:600;color:var(--primary)">' + esc(item.sku) + '</span> ' +
+                '<span>' + esc(item.name) + '</span> ' +
+                '<span style="color:var(--text-light);font-size:12px">库存:' + item.total_stock + '</span>' +
+                '</div>'
+            ).join('');
+            dd.style.display = 'block';
+        }
+
+        function selectOutboundItem(sku) {
+            $('out_sku').value = sku;
+            $('out_search_dropdown').style.display = 'none';
+            // Lookup from allItemsCache instead of querying Supabase
+            const item = allItemsCache.find(i => i.sku === sku);
+            if (item) {
+                $('out_item_name').textContent = item.name;
+                $('out_item_stock').textContent = '库存: ' + item.total_stock;
+                $('out_item_info').style.display = 'block';
+            } else {
+                $('out_item_info').style.display = 'none';
+            }
+        }
+
+        function onSkuInput(targetId) {
+            clearTimeout(skuLookupTimer);
+            skuLookupTimer = setTimeout(async () => {
+                const val = $(targetId).value.trim();
+                if (targetId === 'out_sku') {
+                    if (val.length >= 1) {
+                        const results = await searchItems(val);
+                        showSearchDropdown(results);
+                    } else {
+                        $('out_search_dropdown').style.display = 'none';
+                        $('out_item_info').style.display = 'none';
+                    }
+                    // Lookup from allItemsCache instead of querying Supabase
+                    if (val) {
+                        const items = await loadAllItems();
+                        const item = items.find(i => i.sku === val);
+                        if (item) {
+                            $('out_item_name').textContent = item.name;
+                            $('out_item_stock').textContent = '库存: ' + item.total_stock;
+                            $('out_item_info').style.display = 'block';
+                        } else {
+                            $('out_item_info').style.display = 'none';
+                        }
+                    }
+                }
+            }, 300);
+        }
+
+        let inboundLookupTimer = null;
+        // 缓存当前查找到的已存在 SKU 的原始价格，用于用户留空时保留
+        let inboundExistingPrice = null;
+        let inboundIsNewSku = true;
+
+        function onInboundSkuInput() {
+            clearTimeout(inboundLookupTimer);
+            inboundLookupTimer = setTimeout(async () => {
+                const sku = $('in_sku').value.trim();
+                if (!sku) return;
+                let item = null;
+                const items = await loadAllItems();
+                item = items.find(i => i.sku === sku);
+                // 缓存未命中时直接查数据库兜底
+                if (!item) {
+                    try {
+                        const { data } = await supabase.from('inventory_items').select('sku, name, price, location, safety_stock').eq('sku', sku).maybeSingle();
+                        if (data) item = data;
+                    } catch(e) {}
+                }
+                if (item) {
+                    inboundIsNewSku = false;
+                    inboundExistingPrice = item.price || 0;
+                    if (item.name) $('in_name').value = item.name;
+                    if (item.price) $('in_price').value = item.price;
+                    if (item.location) $('in_location').value = item.location;
+                    if (item.safety_stock) $('in_safety').value = item.safety_stock;
+                    showToast('已自动填充: ' + item.name, 'info');
+                } else {
+                    inboundIsNewSku = true;
+                    inboundExistingPrice = null;
+                    $('in_price').value = '';
+                    $('in_location').value = '';
+                    $('in_safety').value = '0';
+                }
+            }, 200);
+        }
+
+        // ========== localStorage Cache ==========
+        const CACHE_KEY_INV = 'tdl_inventory_cache';
+        const CACHE_KEY_TIME = 'tdl_inventory_cache_time';
+        const CACHE_KEY_ACTIVE = 'tdl_active_cache';
+        const CACHE_KEY_HISTORY = 'tdl_history_cache';
+
+        function saveCache(key, data) {
+            try { localStorage.setItem(key, JSON.stringify(data)); } catch(e) {}
+        }
+        function loadCache(key) {
+            try { const d = localStorage.getItem(key); return d ? JSON.parse(d) : null; } catch(e) { return null; }
+        }
+        let inventoryFullData = [];
+        function onInvSearch() {
+            const q = ($('invSearch').value || '').toLowerCase().trim();
+            if (!q) {
+                renderInventory(inventoryFullData, inventoryFullData.length);
+                return;
+            }
+            const filtered = inventoryFullData.filter(item =>
+                (item.sku || '').toLowerCase().includes(q) ||
+                (item.name || '').toLowerCase().includes(q) ||
+                (item.location || '').toLowerCase().includes(q)
+            );
+            renderInventory(filtered, inventoryFullData.length);
+        }
+        function renderInventory(data, totalCount) {
+            const tbody = $('inventoryBody');
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><i class="bi bi-inbox"></i><p>暂无库存数据，请先入库</p></div></td></tr>';
+                $('dataCount').textContent = '库存: 0';
+                $('headerStockInfo').textContent = '暂无数据';
+                return;
+            }
+            let lowCount = 0;
+            tbody.innerHTML = data.map(item => {
+                const isLow = item.total_stock <= (item.safety_stock || 0);
+                if (isLow) lowCount++;
+                return `<tr>
+                    <td><span class="sku-badge">${esc(item.sku)}</span></td>
+                    <td>${esc(item.name || '-')}</td>
+                    <td>¥${item.price || 0}</td>
+                    <td class="${isLow ? 'stock-low' : 'stock-ok'}">${item.total_stock}</td>
+                    <td><span class="stock-editable" onclick="editSafetyStock('${esc(item.sku)}', ${item.safety_stock || 0})" title="点击修改">${item.safety_stock || 0}</span></td>
+                    <td>${esc(item.location || '-')}</td>
+                    <td>${isLow ? '<span class="stock-low">⚠ 不足</span>' : '<span class="stock-ok">正常</span>'}</td>
+                </tr>`;
+            }).join('');
+            // 底部提示行
+            if (totalCount && totalCount > data.length) {
+                tbody.innerHTML += `<tr><td colspan="7" style="text-align:center;padding:16px">
+                    <span style="color:var(--text-light);font-size:13px">当前显示 ${data.length} / ${totalCount} 条</span>
+                    <button class="btn-return" onclick="loadAllInventory()" style="margin-left:12px">显示全部 ${totalCount} 条</button>
+                </td></tr>`;
+            }
+            $('dataCount').textContent = `共 ${totalCount || data.length} 种物品`;
+            $('headerStockInfo').textContent = lowCount > 0 ? `⚠ ${lowCount} 项库存不足` : `${(totalCount || data.length)} 种物品`;
+        }
+
+        // ========== Load Inventory ==========
+        async function loadInventory(showCacheFirst) {
+            // 先显示缓存数据（秒开）
+            if (showCacheFirst) {
+                const cached = loadCache(CACHE_KEY_INV);
+                if (cached) {
+                    inventoryFullData = cached;
+                    renderInventory(cached, cached.length);
+                    const cacheTime = localStorage.getItem(CACHE_KEY_TIME);
+                    if (cacheTime) {
+                        const age = Math.floor((Date.now() - parseInt(cacheTime)) / 60000);
+                        setStatus(`缓存数据 (${age} 分钟前更新)`, 'wait');
+                    }
+                }
+            }
+
+            // 从数据库加载（默认 200 条）
+            setStatus('加载库存...', 'wait');
+            try {
+                const [dataRes, countRes] = await Promise.all([
+                    supabase.from('inventory_items').select('*').order('sku').limit(200),
+                    supabase.from('inventory_items').select('sku', { count: 'exact', head: true })
+                ]);
+                if (dataRes.error) throw dataRes.error;
+                const totalCount = countRes.count || dataRes.data.length;
+                inventoryFullData = dataRes.data;
+                onInvSearch();
+                saveCache(CACHE_KEY_INV, dataRes.data);
+                localStorage.setItem(CACHE_KEY_TIME, Date.now().toString());
+                setStatus('已连接', 'ok');
+            } catch (err) {
+                const cached = loadCache(CACHE_KEY_INV);
+                if (cached && showCacheFirst) {
+                    setStatus('离线模式 — 显示缓存数据', 'err');
+                } else {
+                    setStatus('连接失败', 'err');
+                    showToast('加载库存失败: ' + err.message, 'error');
+                }
+            }
+        }
+
+        // ========== Load All Inventory ==========
+        async function loadAllInventory() {
+            setStatus('加载全部库存...', 'wait');
+            try {
+                const data = await fetchAll('inventory_items', 'sku', true, 500);
+                inventoryFullData = data;
+                onInvSearch();
+                saveCache(CACHE_KEY_INV, data);
+                localStorage.setItem(CACHE_KEY_TIME, Date.now().toString());
+                setStatus('已连接 — 显示全部', 'ok');
+            } catch (err) {
+                showToast('加载失败: ' + err.message, 'error');
+            }
+        }
+
+        // ========== Active Issues (grouped by person) ==========
+        let activeIssuesCache = [];
+        let activeItemsCache = {};
+
+        function onActiveSearch() {
+            renderActiveGroups();
+        }
+
+        function renderActiveGroups() {
+            const q = ($('activeSearch').value || '').toLowerCase();
+            const issues = activeIssuesCache.filter(i => {
+                if (!q) return true;
+                const name = (activeItemsCache[i.item_sku] || {}).name || '';
+                return i.item_sku.toLowerCase().includes(q) || name.toLowerCase().includes(q) || i.person_id.toLowerCase().includes(q);
+            });
+
+            // Group by person
+            const groups = {};
+            issues.forEach(i => {
+                if (!groups[i.person_id]) groups[i.person_id] = [];
+                groups[i.person_id].push(i);
+            });
+
+            const container = $('activeGroupList');
+            const personKeys = Object.keys(groups).sort();
+
+            if (personKeys.length === 0) {
+                container.innerHTML = '<div class="empty-state"><i class="bi bi-check-circle"></i><p>当前无在借记录</p></div>';
+                return;
+            }
+
+            // Load item names batch
+            let html = '';
+            personKeys.forEach(person => {
+                const items = groups[person];
+                html += '<div class="person-group">';
+                html += '<div class="person-header open" onclick="togglePersonGroup(this)">';
+                html += '<div><span class="name">' + esc(person) + '</span></div>';
+                html += '<div style="display:flex;align-items:center;gap:10px">';
+                html += '<span class="badge">' + items.length + ' 件</span>';
+                html += '<span class="arrow open">▶</span>';
+                html += '</div></div>';
+                html += '<div class="person-body open">';
+                html += '<table><thead><tr><th>SKU</th><th>名称</th><th>数量</th><th>领用时间</th><th>天数</th><th>操作</th></tr></thead><tbody>';
+                items.forEach(item => {
+                    const d = daysSince(item.issued_at);
+                    const name = (activeItemsCache[item.item_sku] || {}).name || '';
+                    html += '<tr>';
+                    html += '<td><span class="sku-badge">' + esc(item.item_sku) + '</span></td>';
+                    html += '<td>' + esc(name) + '</td>';
+                    html += '<td>' + item.quantity + '</td>';
+                    html += '<td style="white-space:nowrap">' + formatTime(item.issued_at) + '</td>';
+                    html += '<td class="' + (d > 7 ? 'stock-low' : '') + '">' + d + ' 天</td>';
+                    html += '<td><button class="btn-return" onclick="openReturnModal(\'' + esc(item.item_sku) + '\',\'' + esc(item.person_id) + '\')"><i class="bi bi-arrow-return-left"></i> 归还</button></td>';
+                    html += '</tr>';
+                });
+                html += '</tbody></table>';
+                html += '</div></div>';
+            });
+            container.innerHTML = html;
+        }
+
+        function togglePersonGroup(el) {
+            el.classList.toggle('open');
+            const body = el.nextElementSibling;
+            body.classList.toggle('open');
+            el.querySelector('.arrow').classList.toggle('open');
+        }
+
+        async function loadActiveIssues() {
+            setStatus('加载在借记录...', 'wait');
+            try {
+                const { data: issues, error } = await supabase.from('active_issues').select('*').order('issued_at', { ascending: false }).limit(200);
+                if (error) throw error;
+
+                // Reuse allItemsCache instead of querying inventory_items again
+                if (!allItemsCache.length) await loadAllItems();
+                const itemMap = {};
+                allItemsCache.forEach(i => itemMap[i.sku] = i);
+
+                activeIssuesCache = issues || [];
+                activeItemsCache = itemMap;
+
+                // Cache for offline export
+                saveCache(CACHE_KEY_ACTIVE, { issues: issues || [], itemMap });
+
+                renderActiveGroups();
+                setStatus('已连接', 'ok');
+            } catch (err) {
+                setStatus('加载失败', 'err');
+                showToast('加载在借记录失败: ' + err.message, 'error');
+            }
+        }
+
+        // ========== Return Modal ==========
+        let returnContext = { sku: '', person: '', itemName: '', borrowedQty: 0 };
+
+        function openReturnModal(sku, person) {
+            returnContext = { sku, person, itemName: '', borrowedQty: 0 };
+
+            $('returnSku').textContent = sku;
+            $('returnPerson').textContent = person;
+
+            // Find the active issue to get quantity
+            const issue = activeIssuesCache.find(i => i.item_sku === sku && i.person_id === person);
+            if (issue) {
+                returnContext.borrowedQty = issue.quantity;
+                $('returnQtyBorrowed').textContent = issue.quantity;
+            }
+            const name = (activeItemsCache[sku] || {}).name || '';
+            returnContext.itemName = name;
+            $('returnName').textContent = name || '-';
+
+            // Reset form
+            const maxQty = issue ? issue.quantity : 1;
+            $('returnQty').value = maxQty;
+            $('returnQty').max = maxQty;
+            $('returnReason').value = '丢失';
+            $('returnReasonCustom').value = '';
+            $('returnReasonCustom').style.display = 'none';
+            $('lossGroup').style.display = 'none';
+            $('lossReasonGroup').style.display = 'none';
+            $('lossQtyDisplay').textContent = '0';
+            $('returnSub').textContent = '确认归还信息';
+            $('returnQtyHint').textContent = '在借 ' + maxQty + ' 件，填写归还数量';
+            $('lossQtyReadonly').value = '0';
+            onReturnQtyChange();
+
+            $('returnModal').classList.add('show');
+            $('returnQty').focus();
+            $('returnQty').select();
+        }
+
+        function onReturnQtyChange() {
+            const qty = parseInt($('returnQty').value) || 0;
+            const borrowed = returnContext.borrowedQty;
+            const lossQty = borrowed - qty;
+
+            if (qty <= 0 || qty > borrowed) {
+                $('returnQtyHint').textContent = '⚠ 请输入 1~' + borrowed + ' 之间的数量';
+                $('returnQtyHint').style.color = '#e71d36';
+                return;
+            }
+            $('returnQtyHint').style.color = '#8d99ae';
+
+            if (lossQty > 0) {
+                // Partial return → loss
+                $('lossGroup').style.display = 'block';
+                $('lossReasonGroup').style.display = 'block';
+                $('lossQtyReadonly').value = lossQty;
+                $('lossQtyDisplay').textContent = lossQty;
+                $('returnSub').textContent = '归还 ' + qty + ' 件，损耗 ' + lossQty + ' 件';
+                $('returnQtyHint').textContent = '在借 ' + borrowed + ' 件，归还 ' + qty + ' 件，差额 ' + lossQty + ' 件记为损耗';
+            } else {
+                // Full return → no loss
+                $('lossGroup').style.display = 'none';
+                $('lossReasonGroup').style.display = 'none';
+                $('returnSub').textContent = '全部归还（无损耗）';
+                $('returnQtyHint').textContent = '在借 ' + borrowed + ' 件，全部归还';
+            }
+        }
+
+        function onLossReasonChange() {
+            const sel = $('returnReason').value;
+            $('returnReasonCustom').style.display = sel === '__custom__' ? 'block' : 'none';
+            if (sel !== '__custom__') $('returnReasonCustom').value = '';
+        }
+
+        function closeReturnModal() {
+            $('returnModal').classList.remove('show');
+        }
+
+        async function confirmReturn() {
+            const qty = parseInt($('returnQty').value) || 0;
+            const borrowed = returnContext.borrowedQty;
+            const lossQty = borrowed - qty;
+            let reason = $('returnReason').value;
+            if (reason === '__custom__') reason = $('returnReasonCustom').value.trim();
+
+            if (qty <= 0 || qty > borrowed) return showToast('请输入有效的归还数量', 'error');
+            if (lossQty > 0 && !reason) return showToast('请填写损耗原因', 'error');
+
+            setStatus('归还中...', 'wait');
+            try {
+                const { data, error } = await supabase.rpc('handle_return', {
+                    p_sku: returnContext.sku,
+                    p_person_id: returnContext.person,
+                    p_qty: qty,
+                    p_loss_qty: lossQty,
+                    p_loss_reason: reason || null
+                });
+
+                if (error) throw error;
+
+                if (data && data.success) {
+                    showToast('归还成功' + (lossQty > 0 ? '，损耗 ' + lossQty + ' 件' : ''), 'success');
+                    closeReturnModal();
+                    allItemsCache = [];
+                    loadActiveIssues();
+                    loadInventory();
+                } else {
+                    showToast(data?.message || '归还失败', 'error');
+                }
+            } catch (err) {
+                showToast('归还失败: ' + err.message, 'error');
+            } finally {
+                setStatus('已连接', 'ok');
+            }
+        }
+
+        // ========== Loss Tracking ==========
+        async function loadLossStats() {
+            setStatus('加载损耗统计...', 'wait');
+            try {
+                // Get month filter
+                let monthFilter = $('lossMonth').value;
+                if (!monthFilter) {
+                    const now = new Date();
+                    monthFilter = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+                    $('lossMonth').value = monthFilter;
+                }
+                const personFilter = $('lossPersonFilter').value;
+
+                // Load all loss records
+                let query = supabase.from('transaction_logs').select('*').eq('type', 'LOSS').order('created_at', { ascending: false });
+                const { data: logs, error } = await query;
+                if (error) throw error;
+
+                // Filter by month
+                const filtered = (logs || []).filter(log => {
+                    const d = new Date(log.created_at);
+                    const ym = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+                    if (ym !== monthFilter) return false;
+                    if (personFilter && log.person_id !== personFilter) return false;
+                    return true;
+                });
+
+                // Load item names from cache instead of querying inventory_items
+                if (!allItemsCache.length) await loadAllItems();
+                const itemMap = {};
+                allItemsCache.forEach(i => itemMap[i.sku] = i);
+
+                // Stats
+                let totalQty = 0;
+                let totalAmount = 0;
+                filtered.forEach(l => {
+                    totalQty += l.quantity || 0;
+                    if (l.unit_price) totalAmount += (l.quantity || 0) * l.unit_price;
+                });
+
+                $('lossTotalCount').textContent = filtered.length;
+                $('lossTotalQty').textContent = totalQty;
+                $('lossTotalAmount').textContent = '¥' + totalAmount.toFixed(2);
+
+                // Table
+                const tbody = $('lossBody');
+                if (filtered.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><i class="bi bi-check-circle"></i><p>该月无损耗记录</p></div></td></tr>';
+                } else {
+                    tbody.innerHTML = filtered.map(log => {
+                        const name = (itemMap[log.item_sku] || {}).name || '';
+                        return '<tr>' +
+                            '<td style="white-space:nowrap">' + formatTime(log.created_at) + '</td>' +
+                            '<td><span class="sku-badge">' + esc(log.item_sku) + '</span></td>' +
+                            '<td>' + esc(name) + '</td>' +
+                            '<td style="color:var(--danger);font-weight:600">' + log.quantity + '</td>' +
+                            '<td>¥' + ((log.unit_price || 0) * log.quantity).toFixed(2) + '</td>' +
+                            '<td>' + esc(log.metadata?.reason || '-') + '</td>' +
+                            '<td>' + esc(log.person_id || '-') + '</td>' +
+                            '</tr>';
+                    }).join('');
+                }
+
+                // Update person filter dropdown
+                const allPersons = [...new Set((logs || []).map(l => l.person_id).filter(Boolean))].sort();
+                const sel = $('lossPersonFilter');
+                const curVal = sel.value;
+                sel.innerHTML = '<option value="">全部人员</option>' + allPersons.map(p => '<option value="' + esc(p) + '">' + esc(p) + '</option>').join('');
+                sel.value = curVal;
+
+                setStatus('已连接', 'ok');
+            } catch (err) {
+                setStatus('加载失败', 'err');
+                showToast('加载损耗统计失败: ' + err.message, 'error');
+            }
+        }
+
+        // ========== Safety Stock Inline Edit ==========
+        async function editSafetyStock(sku, currentVal) {
+            if (!currentUser || !['admin','warehouse','purchase'].includes(currentUser.role)) {
+                return showToast('无权限修改安全库存', 'error');
+            }
+            const newVal = prompt('修改安全库存 (SKU: ' + sku + ')', currentVal);
+            if (newVal === null) return;
+            const num = parseInt(newVal);
+            if (isNaN(num) || num < 0) return showToast('请输入有效数字', 'error');
+
+            setStatus('保存中...', 'wait');
+            try {
+                const { error } = await supabase.from('inventory_items').update({ safety_stock: num }).eq('sku', sku);
+                if (error) throw error;
+                showToast('安全库存已更新', 'success');
+                loadInventory();
+            } catch (err) {
+                showToast('更新失败: ' + err.message, 'error');
+            } finally {
+                setStatus('已连接', 'ok');
+            }
+        }
+
+        // ========== Load History ==========
+        async function loadHistory() {
+            setStatus('加载记录...', 'wait');
+            try {
+                const { data, error } = await supabase.from('transaction_logs').select('*').order('created_at', { ascending: false }).limit(100);
+                if (error) throw error;
+                const tbody = $('historyBody');
+                if (!data || data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><i class="bi bi-journal"></i><p>暂无交易记录</p></div></td></tr>';
+                    return;
+                }
+                const typeMap = { 'IN': ['入库','type-in'], 'OUT': ['出库','type-out'], 'RETURN': ['归还','type-return'], 'LOSS': ['损耗','type-loss'] };
+                tbody.innerHTML = data.map(log => {
+                    const [label, cls] = typeMap[log.type] || [log.type, ''];
+                    return `<tr>
+                        <td style="white-space:nowrap">${formatTime(log.created_at)}</td>
+                        <td><span class="sku-badge">${esc(log.item_sku)}</span></td>
+                        <td><span class="type-badge ${cls}">${label}</span></td>
+                        <td>${log.quantity}</td>
+                        <td>${esc(log.person_id || '-')}</td>
+                    </tr>`;
+                }).join('');
+                setStatus('已连接', 'ok');
+            } catch (err) {
+                setStatus('加载失败', 'err');
+                showToast('加载记录失败: ' + err.message, 'error');
+            }
+        }
+
+        // ========== Inbound (via RPC — atomic) ==========
+        async function handleInbound() {
+            const sku = $('in_sku').value.trim();
+            const name = $('in_name').value.trim();
+            const priceInput = $('in_price').value.trim();
+            const qty = parseInt($('in_quantity').value) || 0;
+            const safety = parseInt($('in_safety').value) || 0;
+            const loc = $('in_location').value.trim();
+
+            if (!sku) return showToast('请填写 SKU', 'error');
+            if (!name) return showToast('请填写名称', 'error');
+            if (qty <= 0) return showToast('数量必须大于 0', 'error');
+            // 新 SKU 必须填写价格
+            if (inboundIsNewSku && priceInput === '') return showToast('新物料必须填写单价', 'error');
+            if (!confirm('确认入库 ' + sku + '（' + name + '）x' + qty + '？')) return;
+
+            const btn = $('btnInbound');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bi bi-hourglass-split"></i> 处理中...';
+            setStatus('入库中...', 'wait');
+
+            try {
+                // 传给 RPC 的价格：已存在 SKU 且用户留空 -> 传现有价格(保留原价)；否则传用户输入的价格
+                const priceToRpc = (!inboundIsNewSku && priceInput === '') ? inboundExistingPrice : parseFloat(priceInput) || 0;
+
+                const { data, error } = await supabase.rpc('handle_inbound', {
+                    p_sku: sku,
+                    p_name: name,
+                    p_price: priceToRpc,
+                    p_qty: qty,
+                    p_safety_stock: safety,
+                    p_location: loc || null,
+                    p_person: currentUser?.display_name || currentUser?.username || '未知'
+                });
+
+                if (error) throw error;
+
+                if (data && data.success) {
+                    showToast('入库成功', 'success');
+                    ['in_sku','in_name','in_price','in_location'].forEach(id => $(id).value = '');
+                    $('in_quantity').value = '1';
+                    $('in_safety').value = '0';
+                    inboundIsNewSku = true;
+                    inboundExistingPrice = null;
+                    $('in_sku').focus();
+                    allItemsCache = [];
+                    loadInventory();
+                } else {
+                    showToast(data?.message || '入库失败', 'error');
+                }
+            } catch (err) {
+                showToast('入库失败: ' + err.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check-lg"></i> 确认入库';
+                setStatus('已连接', 'ok');
+            }
+        }
+
+        // ========== Outbound (via RPC) ==========
+        async function handleOutbound() {
+            const sku = $('out_sku').value.trim();
+            const person = $('out_person').value.trim();
+            const qty = parseInt($('out_quantity').value) || 0;
+
+            if (!sku) return showToast('请填写 SKU', 'error');
+            if (!person) return showToast('请填写领用人', 'error');
+            if (qty <= 0) return showToast('数量必须大于 0', 'error');
+            if (!confirm('确认领用 ' + sku + ' x' + qty + '？\n领用人: ' + person)) return;
+
+            const btn = $('btnOutbound');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bi bi-hourglass-split"></i> 处理中...';
+            setStatus('出库中...', 'wait');
+
+            try {
+                const { data, error } = await supabase.rpc('handle_outbound', {
+                    p_sku: sku,
+                    p_person: person,
+                    p_qty: qty
+                });
+
+                if (error) throw error;
+
+                if (data && data.success) {
+                    showToast('出库成功', 'success');
+                    $('out_sku').value = '';
+                    $('out_person').value = '';
+                    $('out_quantity').value = '1';
+                    $('out_sku').focus();
+                    allItemsCache = [];
+                    loadInventory();
+                } else {
+                    showToast(data?.message || '出库失败', 'error');
+                }
+            } catch (err) {
+                showToast('出库失败: ' + err.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-send"></i> 确认领用';
+                setStatus('已连接', 'ok');
+            }
+        }
+
+        // ========== 分页加载辅助函数 ==========
+        async function fetchAll(table, orderBy, ascending, batchSize) {
+            let all = [];
+            let from = 0;
+            while (true) {
+                const { data, error } = await supabase.from(table)
+                    .select('*')
+                    .order(orderBy, { ascending })
+                    .range(from, from + batchSize - 1);
+                if (error) throw error;
+                if (!data || data.length === 0) break;
+                all = all.concat(data);
+                if (data.length < batchSize) break;
+                from += batchSize;
+            }
+            return all;
+        }
+
+        // ========== Excel Export ==========
+        function showExportStatus(msg) {
+            const el = $('exportStatus');
+            el.style.display = 'block';
+            el.innerHTML = '<i class="bi bi-hourglass-split"></i> ' + msg;
+        }
+
+        function hideExportStatus() {
+            $('exportStatus').style.display = 'none';
+        }
+
+        function formatDate(ts) {
+            if (!ts) return '';
+            return new Date(ts).toLocaleString('zh-CN', { 
+                year:'numeric', month:'2-digit', day:'2-digit', 
+                hour:'2-digit', minute:'2-digit' 
+            });
+        }
+
+        function downloadExcel(wb, filename) {
+            XLSX.writeFile(wb, filename);
+            showToast('导出成功: ' + filename, 'success');
+            hideExportStatus();
+        }
+
+        async function exportInventory() {
+            showExportStatus('正在加载库存数据...');
+            try {
+                let data;
+                try {
+                    data = await fetchAll('inventory_items', 'sku', true, 500);
+                } catch(e) {
+                    data = loadCache(CACHE_KEY_INV);
+                    if (!data) throw new Error('数据库不可用且无缓存数据');
+                    showToast('使用缓存数据导出', 'info');
+                }
+
+                const rows = (data || []).map(item => ({
+                    'SKU': item.sku,
+                    '名称': item.name,
+                    '单价': item.price || 0,
+                    '库存数量': item.total_stock,
+                    '安全库存': item.safety_stock || 0,
+                    '库位': item.location || '',
+                    '库存金额': (item.price || 0) * item.total_stock,
+                    '状态': item.total_stock <= (item.safety_stock || 0) ? '库存不足' : '正常'
+                }));
+
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.json_to_sheet(rows);
+                ws['!cols'] = [
+                    { wch: 15 }, { wch: 25 }, { wch: 10 }, { wch: 10 },
+                    { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 10 }
+                ];
+                XLSX.utils.book_append_sheet(wb, ws, '库存清单');
+
+                const today = new Date().toISOString().slice(0,10);
+                downloadExcel(wb, `库存报表_${today}.xlsx`);
+            } catch (err) {
+                showToast('导出失败: ' + err.message, 'error');
+                hideExportStatus();
+            }
+        }
+
+        async function exportTransactions() {
+            showExportStatus('正在加载交易记录...');
+            try {
+                const data = await fetchAll('transaction_logs', 'created_at', false, 500);
+
+                const rows = (data || []).map(log => ({
+                    '时间': formatDate(log.created_at),
+                    'SKU': log.item_sku,
+                    '类型': TX_TYPE_LABELS[log.type] || log.type,
+                    '数量': log.quantity,
+                    '操作人': log.person_id || '',
+                    '入库单价': log.unit_price || '',
+                    '入库总价': log.total_price || ''
+                }));
+
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.json_to_sheet(rows);
+                ws['!cols'] = [
+                    { wch: 20 }, { wch: 15 }, { wch: 8 }, { wch: 8 },
+                    { wch: 12 }, { wch: 10 }, { wch: 10 }
+                ];
+                XLSX.utils.book_append_sheet(wb, ws, '交易明细');
+
+                const today = new Date().toISOString().slice(0,10);
+                downloadExcel(wb, `交易记录_${today}.xlsx`);
+            } catch (err) {
+                showToast('导出失败: ' + err.message, 'error');
+                hideExportStatus();
+            }
+        }
+
+        async function exportActiveIssues() {
+            showExportStatus('正在加载在借记录...');
+            try {
+                let issues, itemMap;
+                try {
+                    issues = await fetchAll('active_issues', 'issued_at', false, 500);
+
+                    const itemsRes = await supabase.from('inventory_items').select('sku, name, price');
+                    itemMap = {};
+                    (itemsRes.data || []).forEach(i => itemMap[i.sku] = i);
+                } catch(e) {
+                    const cached = loadCache(CACHE_KEY_ACTIVE);
+                    if (cached) {
+                        issues = cached.issues;
+                        itemMap = cached.itemMap;
+                        showToast('使用缓存数据导出', 'info');
+                    } else {
+                        throw new Error('数据库不可用且无缓存数据');
+                    }
+                }
+
+                const rows = (issues || []).map(issue => {
+                    const item = itemMap[issue.item_sku] || {};
+                    const days = daysSince(issue.issued_at);
+                    return {
+                        'SKU': issue.item_sku,
+                        '名称': item.name || '',
+                        '单价': item.price || 0,
+                        '领用人': issue.person_id,
+                        '数量': issue.quantity,
+                        '领用时间': formatDate(issue.issued_at),
+                        '已借天数': days,
+                        '预估金额': (item.price || 0) * issue.quantity
+                    };
+                });
+
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.json_to_sheet(rows);
+                ws['!cols'] = [
+                    { wch: 15 }, { wch: 25 }, { wch: 10 }, { wch: 10 },
+                    { wch: 8 }, { wch: 20 }, { wch: 10 }, { wch: 12 }
+                ];
+                XLSX.utils.book_append_sheet(wb, ws, '在借清单');
+
+                const today = new Date().toISOString().slice(0,10);
+                downloadExcel(wb, `在借记录_${today}.xlsx`);
+            } catch (err) {
+                showToast('导出失败: ' + err.message, 'error');
+                hideExportStatus();
+            }
+        }
+
+        async function exportAll() {
+            showExportStatus('正在加载所有数据...');
+            try {
+                let inventoryData, transactionsData, activeData, returnedData;
+                try {
+                    const [inv, tx, act, ret] = await Promise.all([
+                        fetchAll('inventory_items', 'sku', true, 500),
+                        fetchAll('transaction_logs', 'created_at', false, 500),
+                        fetchAll('active_issues', 'issued_at', false, 500),
+                        fetchAll('returned_issues', 'returned_at', false, 500)
+                    ]);
+                    inventoryData = inv;
+                    transactionsData = tx;
+                    activeData = act;
+                    returnedData = ret;
+                } catch(e) {
+                    const invCache = loadCache(CACHE_KEY_INV);
+                    const actCache = loadCache(CACHE_KEY_ACTIVE);
+                    if (!invCache) throw new Error('数据库不可用且无缓存数据');
+                    inventoryData = invCache;
+                    transactionsData = [];
+                    activeData = actCache ? actCache.issues : [];
+                    returnedData = [];
+                    showToast('使用缓存数据导出（交易记录和归还记录需联网）', 'info');
+                }
+
+                const wb = XLSX.utils.book_new();
+
+                // Sheet 1: 库存清单
+                const invRows = inventoryData.map(item => ({
+                    'SKU': item.sku,
+                    '名称': item.name,
+                    '单价': item.price || 0,
+                    '库存数量': item.total_stock,
+                    '安全库存': item.safety_stock || 0,
+                    '库位': item.location || '',
+                    '库存金额': (item.price || 0) * item.total_stock,
+                    '状态': item.total_stock <= (item.safety_stock || 0) ? '库存不足' : '正常'
+                }));
+                const ws1 = XLSX.utils.json_to_sheet(invRows);
+                ws1['!cols'] = [{ wch:15 },{ wch:25 },{ wch:10 },{ wch:10 },{ wch:10 },{ wch:12 },{ wch:12 },{ wch:10 }];
+                XLSX.utils.book_append_sheet(wb, ws1, '库存清单');
+
+                // Sheet 2: 交易明细
+                const txRows = transactionsData.map(log => ({
+                    '时间': formatDate(log.created_at),
+                    'SKU': log.item_sku,
+                    '类型': TX_TYPE_LABELS[log.type] || log.type,
+                    '数量': log.quantity,
+                    '操作人': log.person_id || '',
+                    '入库单价': log.unit_price || '',
+                    '入库总价': log.total_price || ''
+                }));
+                const ws2 = XLSX.utils.json_to_sheet(txRows);
+                ws2['!cols'] = [{ wch:20 },{ wch:15 },{ wch:8 },{ wch:8 },{ wch:12 },{ wch:10 },{ wch:10 }];
+                XLSX.utils.book_append_sheet(wb, ws2, '交易明细');
+
+                // Sheet 3: 在借清单
+                const itemMap = {};
+                inventoryData.forEach(i => itemMap[i.sku] = i);
+                const actRows = activeData.map(issue => {
+                    const item = itemMap[issue.item_sku] || {};
+                    return {
+                        'SKU': issue.item_sku,
+                        '名称': item.name || '',
+                        '单价': item.price || 0,
+                        '领用人': issue.person_id,
+                        '数量': issue.quantity,
+                        '领用时间': formatDate(issue.issued_at),
+                        '已借天数': daysSince(issue.issued_at),
+                        '预估金额': (item.price || 0) * issue.quantity
+                    };
+                });
+                const ws3 = XLSX.utils.json_to_sheet(actRows);
+                ws3['!cols'] = [{ wch:15 },{ wch:25 },{ wch:10 },{ wch:10 },{ wch:8 },{ wch:20 },{ wch:10 },{ wch:12 }];
+                XLSX.utils.book_append_sheet(wb, ws3, '在借清单');
+
+                // Sheet 4: 归还明细
+                const retRows = returnedData.map(r => ({
+                    'SKU': r.item_sku,
+                    '名称': (itemMap[r.item_sku] || {}).name || '',
+                    '领用人': r.person_id,
+                    '数量': r.quantity,
+                    '领用时间': formatDate(r.issued_at),
+                    '归还时间': formatDate(r.returned_at),
+                    '持有天数': Math.floor((new Date(r.returned_at) - new Date(r.issued_at)) / 86400000)
+                }));
+                const ws4 = XLSX.utils.json_to_sheet(retRows);
+                ws4['!cols'] = [{ wch:15 },{ wch:25 },{ wch:10 },{ wch:8 },{ wch:20 },{ wch:20 },{ wch:10 }];
+                XLSX.utils.book_append_sheet(wb, ws4, '归还明细');
+
+                const today = new Date().toISOString().slice(0,10);
+                downloadExcel(wb, `库存报表_全部_${today}.xlsx`);
+            } catch (err) {
+                showToast('导出失败: ' + err.message, 'error');
+                hideExportStatus();
+            }
+        }
+
+        // ========== Excel Batch Import ==========
+        let importData = [];
+
+        function previewImportFile() {
+            const file = $('importFile').files[0];
+            if (!file) return;
+
+            showExportStatus('正在解析 Excel...');
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const wb = XLSX.read(e.target.result, { type: 'array' });
+                    const ws = wb.Sheets[wb.SheetNames[0]];
+                    const rows = XLSX.utils.sheet_to_json(ws);
+
+                    if (rows.length === 0) {
+                        showToast('Excel 文件为空', 'error');
+                        hideExportStatus();
+                        return;
+                    }
+
+                    const skuKeys = ['sku', 'SKU', '物料代码', '编码', '代码', '物料编码', '物料SKU'];
+                    const nameKeys = ['name', '名称', '品名', '物料名称', '物品名称', '物料名'];
+                    const priceKeys = ['price', '单价', '价格', '成本'];
+                    const locationKeys = ['location', '库位', '仓位', '存放位置'];
+
+                    const headers = Object.keys(rows[0]);
+                    function findCol(keys) {
+                        return headers.find(h => keys.some(k => h.includes(k))) || null;
+                    }
+                    const skuCol = findCol(skuKeys);
+                    const nameCol = findCol(nameKeys);
+                    const priceCol = findCol(priceKeys);
+                    const locationCol = findCol(locationKeys);
+
+                    if (!skuCol || !nameCol) {
+                        showToast('未找到 SKU/名称列，请确保 Excel 包含这两列', 'error');
+                        hideExportStatus();
+                        return;
+                    }
+
+                    importData = rows.map(row => ({
+                        sku: String(row[skuCol] || '').trim(),
+                        name: String(row[nameCol] || '').trim(),
+                        price: parseFloat(row[priceCol]) || 0,
+                        location: String(row[locationCol] || '').trim()
+                    })).filter(item => item.sku && item.name);
+
+                    const preview = importData.slice(0, 10);
+                    $('importPreviewBody').innerHTML = preview.map(item =>
+                        '<tr><td><span class="sku-badge">' + esc(item.sku) + '</span></td><td>' + esc(item.name) + '</td><td>¥' + item.price + '</td><td>' + esc(item.location || '-') + '</td></tr>'
+                    ).join('');
+
+                    $('importCount').textContent = '共 ' + importData.length + ' 条记录（匹配列：' + skuCol + ' → SKU，' + nameCol + ' → 名称）';
+                    $('importPreview').style.display = 'block';
+                    hideExportStatus();
+                    $('importFile').value = '';
+                } catch(err) {
+                    showToast('解析失败: ' + err.message, 'error');
+                    hideExportStatus();
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        async function handleBatchImport() {
+            if (importData.length === 0) return;
+
+            if (!confirm('确认导入 ' + importData.length + ' 条物料记录？已存在的 SKU 将跳过。')) return;
+
+            const btn = $('btnImport');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bi bi-hourglass-split"></i> 导入中...';
+            setStatus('批量导入中...', 'wait');
+
+            try {
+                const existingItems = await fetchAll('inventory_items', 'sku', true, 500);
+                const existingSkus = new Set(existingItems.map(i => i.sku));
+
+                let imported = 0, skipped = 0, failed = 0;
+                const toInsert = importData.filter(item => {
+                    if (existingSkus.has(item.sku)) { skipped++; return false; }
+                    return true;
+                });
+
+                const BATCH = 50;
+                for (let i = 0; i < toInsert.length; i += BATCH) {
+                    const batch = toInsert.slice(i, i + BATCH);
+                    const results = await Promise.allSettled(batch.map(item =>
+                        supabase.from('inventory_items').insert({
+                            sku: item.sku, name: item.name, price: item.price,
+                            total_stock: 0, safety_stock: 0, location: item.location || ''
+                        })
+                    ));
+                    results.forEach(r => {
+                        if (r.status === 'fulfilled' && !r.value.error) imported++;
+                        else failed++;
+                    });
+                    setStatus('批量导入中... ' + Math.min(i + BATCH, toInsert.length) + '/' + toInsert.length, 'wait');
+                }
+
+                const msg = '导入完成：新增 ' + imported + '，跳过 ' + skipped + '（已存在）' + (failed > 0 ? '，失败 ' + failed : '');
+                showToast(msg, imported > 0 ? 'success' : 'info');
+                setStatus('已连接', 'ok');
+
+                importData = [];
+                $('importPreview').style.display = 'none';
+                $('importFile').value = '';
+                loadInventory();
+            } catch(err) {
+                showToast('导入失败: ' + err.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-cloud-upload"></i> 确认导入';
+            }
+        }
+
+
+        // Expose to global for onclick handlers
+        window.loadInventory = loadInventory;
+        window.loadAllInventory = loadAllInventory;
+        window.loadHistory = loadHistory;
+        window.loadActiveIssues = loadActiveIssues;
+        window.handleInbound = handleInbound;
+        window.handleOutbound = handleOutbound;
+        window.onInvSearch = onInvSearch;
+        window.exportAll = exportAll;
+        window.exportInventory = exportInventory;
+        window.exportTransactions = exportTransactions;
+        window.exportActiveIssues = exportActiveIssues;
+        window.openScanner = openScanner;
+        window.closeScanner = closeScanner;
+        window.previewImportFile = previewImportFile;
+        window.handleBatchImport = handleBatchImport;
+        window.onSkuInput = onSkuInput;
+        window.selectOutboundItem = selectOutboundItem;
+        window.handleLogin = handleLogin;
+        window.handleLogout = handleLogout;
+        window.openReturnModal = openReturnModal;
+        window.closeReturnModal = closeReturnModal;
+        window.confirmReturn = confirmReturn;
+        window.onReturnQtyChange = onReturnQtyChange;
+        window.onLossReasonChange = onLossReasonChange;
+        window.loadLossStats = loadLossStats;
+        window.editSafetyStock = editSafetyStock;
+        window.onActiveSearch = onActiveSearch;
+        window.togglePersonGroup = togglePersonGroup;
+        window.openPwModal = openPwModal;
+        window.closePwModal = closePwModal;
+        window.changePassword = changePassword;
+        window.loadUserList = loadUserList;
+        window.addUser = addUser;
+        window.deleteUser = deleteUser;
+        window.resetUserPassword = resetUserPassword;
+        window.openRolePermModal = openRolePermModal;
+        window.closeRolePermModal = closeRolePermModal;
+        window.saveRolePerm = saveRolePerm;
+        window.selectRolePermTab = selectRolePermTab;
+
+        // Modal overlay close
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('modal-overlay')) {
+                e.target.classList.remove('show');
+            }
+        });
+        // Password modal enter key
+        document.getElementById('pwConfirm').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') changePassword();
+        });
+    })();
+    </script>
+</body>
+</html>
