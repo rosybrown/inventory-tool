@@ -1548,6 +1548,7 @@
         // ========== Camera Scanner ==========
         let html5QrCode = null;
         let scannerTargetInput = null;
+        let scannerProcessing = false;
 
         function openScanner(targetInputId) {
             if (typeof Html5Qrcode === 'undefined' || typeof Html5QrcodeSupportedFormats === 'undefined') {
@@ -1614,6 +1615,8 @@
         }
 
         function onScanSuccess(decodedText) {
+            if (scannerProcessing) return;
+            scannerProcessing = true;
             const target = $(scannerTargetInput);
             if (target) {
                 target.value = decodedText;
@@ -1638,6 +1641,7 @@
             }
             $('scannerModal').style.display = 'none';
             scannerTargetInput = null;
+            scannerProcessing = false;
         }
 
         // ========== SKU/名称搜索 ==========
