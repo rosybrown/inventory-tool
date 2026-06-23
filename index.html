@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -477,9 +477,14 @@
             <div class="card">
                 <div class="card-header-custom">
                     <h5>实时库存</h5>
-                    <button class="btn btn-sm btn-outline" onclick="loadInventory()">
-                        <i class="bi bi-arrow-clockwise"></i> 刷新
-                    </button>
+                    <div style="display:flex;gap:8px">
+                        <button class="btn btn-sm btn-outline" onclick="exportInventory()">
+                            <i class="bi bi-file-earmark-excel"></i> 导出
+                        </button>
+                        <button class="btn btn-sm btn-outline" onclick="loadInventory()">
+                            <i class="bi bi-arrow-clockwise"></i> 刷新
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body-custom" style="padding:0">
                     <div style="padding:12px 16px;border-bottom:1px solid #f0f0f0">
@@ -634,9 +639,14 @@
             <div class="card">
                 <div class="card-header-custom">
                     <h5>当前在借记录</h5>
-                    <button class="btn btn-sm btn-outline" onclick="loadActiveIssues()">
-                        <i class="bi bi-arrow-clockwise"></i> 刷新
-                    </button>
+                    <div style="display:flex;gap:8px">
+                        <button class="btn btn-sm btn-outline" onclick="exportActiveIssues()">
+                            <i class="bi bi-file-earmark-excel"></i> 导出
+                        </button>
+                        <button class="btn btn-sm btn-outline" onclick="loadActiveIssues()">
+                            <i class="bi bi-arrow-clockwise"></i> 刷新
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body-custom">
                     <input type="text" class="active-search" id="activeSearch" placeholder="🔍 搜索 SKU / 名称 / 领用人..." oninput="onActiveSearch()" style="margin-bottom:12px">
@@ -652,9 +662,14 @@
             <div class="card">
                 <div class="card-header-custom">
                     <h5>交易记录</h5>
-                    <button class="btn btn-sm btn-outline" onclick="loadHistory()">
-                        <i class="bi bi-arrow-clockwise"></i> 刷新
-                    </button>
+                    <div style="display:flex;gap:8px">
+                        <button class="btn btn-sm btn-outline" onclick="exportTransactions()">
+                            <i class="bi bi-file-earmark-excel"></i> 导出
+                        </button>
+                        <button class="btn btn-sm btn-outline" onclick="loadHistory()">
+                            <i class="bi bi-arrow-clockwise"></i> 刷新
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body-custom" style="padding:0">
                     <div class="table-wrap">
@@ -680,9 +695,14 @@
             <div class="card">
                 <div class="card-header-custom">
                     <h5><i class="bi bi-exclamation-triangle" style="color:var(--danger)"></i> 损耗统计</h5>
-                    <button class="btn btn-sm btn-outline" onclick="loadLossStats()">
-                        <i class="bi bi-arrow-clockwise"></i> 刷新
-                    </button>
+                    <div style="display:flex;gap:8px">
+                        <button class="btn btn-sm btn-outline" onclick="exportLossStats()">
+                            <i class="bi bi-file-earmark-excel"></i> 导出
+                        </button>
+                        <button class="btn btn-sm btn-outline" onclick="loadLossStats()">
+                            <i class="bi bi-arrow-clockwise"></i> 刷新
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body-custom">
                     <div class="stat-grid" id="lossStatGrid">
@@ -775,7 +795,7 @@
                 </div>
                 <div class="card-body-custom">
                     <p style="color:var(--text-light);font-size:13px;margin-bottom:20px">
-                        导出数据用于财务核算，包含库存清单、交易明细、在借记录和归还记录。
+                        导出数据用于财务核算，包含库存清单、交易明细、在借记录、归还记录和损耗明细。
                     </p>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
                         <button class="btn btn-success" onclick="exportAll()">
@@ -789,6 +809,9 @@
                         </button>
                         <button class="btn btn-outline" onclick="exportActiveIssues()">
                             <i class="bi bi-clock-history"></i> 仅在借记录
+                        </button>
+                        <button class="btn btn-outline" onclick="exportLossStats()">
+                            <i class="bi bi-exclamation-triangle"></i> 仅损耗记录
                         </button>
                     </div>
                     <div id="exportStatus" style="margin-top:16px;font-size:13px;color:var(--text-light);display:none">
@@ -861,8 +884,11 @@
             </div>
             <div class="login-error" id="forcePwError"></div>
             <div class="btn-row">
-                <button class="btn btn-primary" style="width:100%" onclick="forceChangePassword()">
-                    <i class="bi bi-check-lg"></i> 修改密码并继续
+                <button class="btn btn-outline" onclick="skipForcePwChange()">
+                    跳过
+                </button>
+                <button class="btn btn-primary" style="flex:1" onclick="forceChangePassword()">
+                    <i class="bi bi-check-lg"></i> 修改密码
                 </button>
             </div>
         </div>
@@ -1055,9 +1081,10 @@
             checkLogin(u, p).then(async user => {
                 if (user) {
                     await enterApp(user);
-                    // 检测使用默认密码，强制修改
+                    // 检测使用默认密码，首次强制修改（跳过后不再提醒）
                     if (p === '123456') {
-                        openForcePwModal();
+                        const skipped = localStorage.getItem('inventory_force_pw_skipped');
+                        if (!skipped) openForcePwModal();
                     }
                 } else {
                     err.textContent = '用户名或密码错误';
@@ -1161,6 +1188,11 @@
             $('forcePwModal').classList.remove('show');
         }
 
+        function skipForcePwChange() {
+            try { localStorage.setItem('inventory_force_pw_skipped', '1'); } catch(e) {}
+            closeForcePwModal();
+        }
+
         async function forceChangePassword() {
             const oldPw = $('forcePwOld').value.trim();
             const newPw = $('forcePwNew').value.trim();
@@ -1181,6 +1213,7 @@
                 if (error) throw error;
                 if (data && data.success) {
                     showToast('密码已修改，欢迎使用系统', 'success');
+                    try { localStorage.removeItem('inventory_force_pw_skipped'); } catch(e) {}
                     closeForcePwModal();
                 } else {
                     err.textContent = data?.message || '修改失败';
@@ -2445,6 +2478,63 @@
             }
         }
 
+        async function exportLossStats() {
+            showExportStatus('正在加载损耗记录...');
+            try {
+                const monthFilter = $('lossMonth').value;
+                const personFilter = $('lossPersonFilter').value;
+
+                let logs;
+                try {
+                    logs = await fetchAll('transaction_logs', 'created_at', false, 500);
+                } catch(e) {
+                    showToast('数据库不可用，无法导出', 'error');
+                    hideExportStatus();
+                    return;
+                }
+
+                const lossLogs = (logs || []).filter(log => {
+                    if (log.type !== 'LOSS') return false;
+                    if (monthFilter) {
+                        const d = new Date(log.created_at);
+                        const ym = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+                        if (ym !== monthFilter) return false;
+                    }
+                    if (personFilter && log.person_id !== personFilter) return false;
+                    return true;
+                });
+
+                if (!allItemsCache.length) await loadAllItems();
+                const itemMap = {};
+                allItemsCache.forEach(i => itemMap[i.sku] = i);
+
+                const rows = lossLogs.map(log => ({
+                    '时间': formatDate(log.created_at),
+                    'SKU': log.item_sku,
+                    '名称': (itemMap[log.item_sku] || {}).name || '',
+                    '数量': log.quantity,
+                    '金额': (log.unit_price || 0) * (log.quantity || 0),
+                    '原因': (log.metadata && log.metadata.reason) || '-',
+                    '领用人': log.person_id || '-'
+                }));
+
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.json_to_sheet(rows);
+                ws['!cols'] = [
+                    { wch: 20 }, { wch: 15 }, { wch: 25 },
+                    { wch: 8 }, { wch: 10 }, { wch: 12 }, { wch: 10 }
+                ];
+                XLSX.utils.book_append_sheet(wb, ws, '损耗明细');
+
+                const today = new Date().toISOString().slice(0,10);
+                const suffix = monthFilter ? '_' + monthFilter : '';
+                downloadExcel(wb, `损耗记录${suffix}_${today}.xlsx`);
+            } catch (err) {
+                showToast('导出失败: ' + err.message, 'error');
+                hideExportStatus();
+            }
+        }
+
         async function exportAll() {
             showExportStatus('正在加载所有数据...');
             try {
@@ -2535,6 +2625,20 @@
                 const ws4 = XLSX.utils.json_to_sheet(retRows);
                 ws4['!cols'] = [{ wch:15 },{ wch:25 },{ wch:10 },{ wch:8 },{ wch:20 },{ wch:20 },{ wch:10 }];
                 XLSX.utils.book_append_sheet(wb, ws4, '归还明细');
+
+                // Sheet 5: 损耗明细
+                const lossRows = transactionsData.filter(log => log.type === 'LOSS').map(log => ({
+                    '时间': formatDate(log.created_at),
+                    'SKU': log.item_sku,
+                    '名称': (itemMap[log.item_sku] || {}).name || '',
+                    '数量': log.quantity,
+                    '金额': (log.unit_price || 0) * (log.quantity || 0),
+                    '原因': (log.metadata && log.metadata.reason) || '-',
+                    '领用人': log.person_id || '-'
+                }));
+                const ws5 = XLSX.utils.json_to_sheet(lossRows);
+                ws5['!cols'] = [{ wch:20 },{ wch:15 },{ wch:25 },{ wch:8 },{ wch:10 },{ wch:12 },{ wch:10 }];
+                XLSX.utils.book_append_sheet(wb, ws5, '损耗明细');
 
                 const today = new Date().toISOString().slice(0,10);
                 downloadExcel(wb, `库存报表_全部_${today}.xlsx`);
@@ -2674,6 +2778,7 @@
         window.exportInventory = exportInventory;
         window.exportTransactions = exportTransactions;
         window.exportActiveIssues = exportActiveIssues;
+        window.exportLossStats = exportLossStats;
         window.openScanner = openScanner;
         window.closeScanner = closeScanner;
         window.previewImportFile = previewImportFile;
@@ -2694,6 +2799,7 @@
         window.openPwModal = openPwModal;
         window.closePwModal = closePwModal;
         window.changePassword = changePassword;
+        window.skipForcePwChange = skipForcePwChange;
         window.loadUserList = loadUserList;
         window.addUser = addUser;
         window.deleteUser = deleteUser;
