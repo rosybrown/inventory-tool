@@ -524,12 +524,16 @@
                             <button type="button" class="btn btn-sm btn-outline" onclick="openScanner('in_sku')" style="width:auto;flex-shrink:0;padding:10px 14px">
                                 <i class="bi bi-camera"></i> 扫码
                             </button>
+                            <button type="button" class="btn btn-sm btn-outline" onclick="openSkuHelper()" style="width:auto;flex-shrink:0;padding:10px 14px">
+                                <i class="bi bi-tag"></i> 编码助手
+                            </button>
                         </div>
                     </div>
                     <div class="form-row">
-                        <div class="form-group">
+                        <div class="form-group" style="position:relative">
                             <label class="form-label">名称 *</label>
-                            <input type="text" class="form-input" id="in_name" placeholder="物品名称">
+                            <input type="text" class="form-input" id="in_name" placeholder="输入名称，自动匹配 SKU" autocomplete="off">
+                            <div id="in_name_dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1.5px solid #e0e0e0;border-top:none;border-radius:0 0 8px 8px;max-height:200px;overflow-y:auto;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,0.1)"></div>
                         </div>
                         <div class="form-group">
                             <label class="form-label">单价</label>
@@ -982,6 +986,101 @@
             <div class="btn-row">
                 <button class="btn btn-primary" onclick="saveRolePerm()"><i class="bi bi-check-lg"></i> 保存</button>
                 <button class="btn btn-outline" onclick="closeRolePermModal()">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SKU Helper Modal -->
+    <div class="modal-overlay" id="skuHelperModal">
+        <div class="modal-box" style="max-width:480px">
+            <h3><i class="bi bi-tag"></i> SKU 编码助手</h3>
+            <div class="sub">编码结构：<b>品类代码 - 核心特征参数 - 供应商代码</b></div>
+            <div class="form-group">
+                <label class="form-label">① 品类代码</label>
+                <div style="display:flex;gap:8px">
+                    <select class="form-input" id="skuHelperCategory" onchange="onSkuHelperChange()" style="flex:1">
+                        <option value="">-- 选择品类 --</option>
+                    </select>
+                    <button class="btn btn-sm btn-outline" onclick="openSkuCategoryManager()" style="width:auto;flex-shrink:0;padding:10px 12px" title="管理品类">
+                        <i class="bi bi-gear"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">② 核心特征参数 <span style="font-weight:400;color:#8d99ae">（规格、尺寸、公差等）</span></label>
+                <input type="text" class="form-input" id="skuHelperSpec" placeholder="如 D10、M10-1.25、VNMG160404、PA70-D400" oninput="onSkuHelperChange()">
+            </div>
+            <div class="form-group">
+                <label class="form-label">③ 供应商代码</label>
+                <div style="display:flex;gap:8px">
+                    <select class="form-input" id="skuHelperVendor" onchange="onSkuHelperChange()" style="flex:1">
+                        <option value="">-- 选择供应商 --</option>
+                    </select>
+                    <button class="btn btn-sm btn-outline" onclick="openSkuSupplierManager()" style="width:auto;flex-shrink:0;padding:10px 12px" title="管理供应商">
+                        <i class="bi bi-gear"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">特征参数参考 <span style="font-weight:400;color:#8d99ae">（各品类常用格式）</span></label>
+                <div id="skuHelperHint" style="font-size:12px;color:#8d99ae;background:#f8f9fa;padding:10px 12px;border-radius:8px;line-height:1.7">选择品类后显示该品类的编码格式提示</div>
+            </div>
+            <hr class="divider">
+            <div style="background:#f0f2f5;border-radius:10px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between">
+                <span style="font-size:12px;color:#8d99ae">预览 SKU</span>
+                <span id="skuHelperPreview" style="font-size:17px;font-weight:700;color:#4361ee;font-family:monospace">--</span>
+            </div>
+            <div class="btn-row" style="margin-top:20px">
+                <button class="btn btn-outline" onclick="closeSkuHelper()">取消</button>
+                <button class="btn btn-primary" id="btnSkuHelperApply" onclick="applySkuHelper()" disabled>
+                    <i class="bi bi-check-lg"></i> 填入 SKU
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SKU Category Manager Modal -->
+    <div class="modal-overlay" id="skuCategoryModal">
+        <div class="modal-box" style="max-width:500px">
+            <h3><i class="bi bi-folder"></i> 品类代码管理</h3>
+            <div class="sub">增删物料品类代码，保存后所有用户共享</div>
+            <div style="display:flex;gap:8px;margin-bottom:12px">
+                <input type="text" class="form-input" id="newCatCode" placeholder="代码" maxlength="5" style="width:90px">
+                <input type="text" class="form-input" id="newCatName" placeholder="中文名称" style="flex:1">
+                <button class="btn btn-sm btn-primary" onclick="addSkuCategory()" style="width:auto;padding:0 14px"><i class="bi bi-plus-lg"></i></button>
+            </div>
+            <div style="max-height:300px;overflow-y:auto">
+                <table style="margin:0">
+                    <thead><tr><th>代码</th><th>名称</th><th>操作</th></tr></thead>
+                    <tbody id="skuCategoryListBody"></tbody>
+                </table>
+            </div>
+            <hr class="divider">
+            <div class="btn-row">
+                <button class="btn btn-outline" onclick="closeSkuCategoryManager()">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SKU Supplier Manager Modal -->
+    <div class="modal-overlay" id="skuSupplierModal">
+        <div class="modal-box" style="max-width:520px">
+            <h3><i class="bi bi-truck"></i> 供应商代码管理</h3>
+            <div class="sub">增删供应商代码，保存后所有用户共享</div>
+            <div style="display:flex;gap:8px;margin-bottom:12px">
+                <input type="text" class="form-input" id="newSupCode" placeholder="代码" maxlength="5" style="width:90px">
+                <input type="text" class="form-input" id="newSupName" placeholder="供应商名称" style="flex:1">
+                <button class="btn btn-sm btn-primary" onclick="addSkuSupplier()" style="width:auto;padding:0 14px"><i class="bi bi-plus-lg"></i></button>
+            </div>
+            <div style="max-height:300px;overflow-y:auto">
+                <table style="margin:0">
+                    <thead><tr><th>代码</th><th>供应商名称</th><th>操作</th></tr></thead>
+                    <tbody id="skuSupplierListBody"></tbody>
+                </table>
+            </div>
+            <hr class="divider">
+            <div class="btn-row">
+                <button class="btn btn-outline" onclick="closeSkuSupplierManager()">关闭</button>
             </div>
         </div>
     </div>
@@ -1496,8 +1595,258 @@
             }
         }
 
-        // ========== Tab Switching ==========
-        document.querySelectorAll('.tab-item').forEach(tab => {
+// ========== SKU Encoding Helper ==========
+const SKU_CATEGORIES = [
+    { code: 'BYK', name: '半圆键铣刀' },
+    { code: 'LM', name: '立铣刀/球刀/成型铣刀' },
+    { code: 'ZT', name: '直钻/钻花/合金钻头' },
+    { code: 'QDG', name: '枪钻（深孔钻）' },
+    { code: 'JZ', name: '铰刀' },
+    { code: 'ZM', name: '中心钻/定心钻/锪钻' },
+    { code: 'XP', name: '锯片铣刀/三面刃/槽铣刀' },
+    { code: 'DP', name: '数控刀片（可转位）' },
+    { code: 'DG', name: '刀杆/刀柄/夹头' },
+    { code: 'ST', name: '丝攻/滚丝轮' },
+    { code: 'SL', name: '砂轮/磨具' },
+    { code: 'GSL', name: '滚丝轮（专用）' },
+    { code: 'LD', name: '拉刀' },
+    { code: 'DB', name: '刀柄（BT/NT/MT接口）' },
+    { code: 'QT', name: '其他/附件' },
+    { code: 'UZ', name: 'U钻（整体式）' },
+    { code: 'CD', name: '车刀/镗刀（整体式）' },
+    { code: 'TX', name: 'T型刀/异形铣刀' }
+];
+
+const SKU_SUPPLIERS = [
+    { code: 'HG', name: '哈工' },
+    { code: 'ZH', name: '志华' },
+    { code: 'LX', name: '零星' },
+    { code: 'AR', name: '奥润' },
+    { code: 'DH', name: '丹豪' },
+    { code: 'HF', name: '重庆贺梵切削' },
+    { code: 'TM', name: '重庆台玛硬质合金' },
+    { code: 'HH', name: '弘虎工具制造' },
+    { code: 'SMW', name: '苏曼威' },
+    { code: 'WQ', name: '温峤' },
+    { code: 'KRD', name: '科锐德' },
+    { code: 'KET', name: '凯尔特数控' },
+    { code: 'TY', name: '太原科光深孔钻' },
+    { code: 'KN', name: '青岛凯妮精磨刀具' },
+    { code: 'JS', name: '金石' },
+    { code: 'STL', name: '常州速腾螺纹' },
+    { code: 'YG', name: '渝鸽星模具' },
+    { code: 'HS', name: '青岛海狮砂轮' },
+    { code: 'WSD', name: '山西万事达磨床工具' },
+    { code: 'BTS', name: '无锡贝特思' },
+    { code: 'SLP', name: '顺立鹏机电' },
+    { code: 'TFL', name: '泰峰利' },
+    { code: 'HJ', name: '航健工量具销售中心' },
+    { code: 'LH', name: '两汇机电' },
+    { code: 'JEFF', name: 'JEFF' }
+];
+
+const SKU_CAT_HINTS = {
+    'BYK': '格式: D{直径}-{宽度}[-P公差][-N公差][材质]-供应商<br>例: D23-5-P045-DH',
+    'LM': '格式: D{直径}[R{圆角}][L{长度}][角度][刃数T][型号]-供应商<br>例: D12-R0.5-L100-75-LX',
+    'ZT': '格式: D{直径}[-JC加长][-CO含钴][-ZB锥柄][-L长度][-TC涂层][-ZT整体合金]-供应商<br>例: D10-JC-HG, D5.8-L200-HG',
+    'QDG': '格式: D{直径}-L{长度}[-工件代号]-供应商<br>例: D19-L720-TY',
+    'JZ': '格式: D{直径}[-H公差等级][-P公差值][-TC涂层][-ZB直柄][-SY手用]-供应商<br>例: D6-H7-L60-TC-TM',
+    'ZM': '格式: A/B/R+型号[D{直径}][角度][-CO含钴][-TC涂层]-供应商<br>例: A3.15-HG, D16-60-HG',
+    'XP': '格式: D{外径}-{厚度}-{齿数E}-供应商<br>例: D80-13-3E-ZH',
+    'DP': '格式: {原厂型号}[材质后缀]-供应商<br>例: VNMG160404-VP15TF-SMW',
+    'DG': '格式: {原厂型号}[-D直径-倍径-ZN]-供应商<br>例: MWLNL2020-K06-HG',
+    'ST': '格式: M{规格}-{螺距}[-L左旋][-H2精度][-JY机用][-SS手用][-WG钨钢]-供应商<br>例: M10-1.25-H2-JY-HG',
+    'SL': '格式: {材质}{粒度}-D{外径}[-{厚度}][-SX双斜边][-TJ通机成型]-供应商<br>例: PA70-D400-40-SX-YG',
+    'GSL': '格式: M{规格}-{螺距}[-L长度]-供应商<br>例: M16-1.5-L-STL',
+    'LD': '格式: {型号/特征}-供应商<br>例: 3E-HH',
+    'DB': '格式: {接口}{规格}-C{夹持直径}-{长度}L-供应商<br>例: BT40-C32-70L-LX',
+    'QT': '格式: {特征描述}-供应商<br>例: JGB-BG4-WSD',
+    'UZ': '格式: {型号}-D{直径}-{倍径}D-C{夹持}-供应商<br>例: WC13.0-4D-C20-HG',
+    'CD': '格式: {材质牌号}-{角度}-{尺寸}-供应商<br>例: YT15-90-18-20-HG',
+    'TX': '格式: D{直径}-{厚度}-R{圆角}-供应商<br>例: D15-3-R1.5-HJ'
+};
+
+const SKU_NAME_KEYWORDS = {
+    'ZT': ['直钻', '钻花', '钻头', '麻花钻', '含钴钻', '合金钻'],
+    'QDG': ['枪钻', '深孔钻'],
+    'LM': ['立铣刀', '球刀', '球头', '铣刀', '锥度刀', 'R角刀'],
+    'BYK': ['半圆键', '键槽铣'],
+    'JZ': ['铰刀'],
+    'ZM': ['中心钻', '定心钻', '锪钻'],
+    'XP': ['锯片铣', '三面刃', '槽铣'],
+    'DP': ['刀片', '数控刀片', '可转位'],
+    'DG': ['刀杆', '阻尼刀杆'],
+    'DB': ['刀柄', 'BT刀柄'],
+    'ST': ['丝攻', '丝锥', '滚丝轮'],
+    'SL': ['砂轮', '磨具'],
+    'GSL': ['滚丝轮'],
+    'LD': ['拉刀'],
+    'UZ': ['U钻'],
+    'CD': ['车刀', '镗刀', '倒角刀'],
+    'TX': ['T型刀', '异形铣'],
+    'QT': ['压板', '螺丝', '扳手', '金刚笔', '联轴器', '刀垫', '中心销']
+};
+
+function loadSkuCategories() {
+    const sel = $('skuHelperCategory');
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">-- 选择品类 --</option>';
+    SKU_CATEGORIES.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.code;
+        opt.textContent = c.code + ' ' + c.name;
+        sel.appendChild(opt);
+    });
+    if (prev) sel.value = prev;
+}
+
+function loadSkuSuppliers() {
+    const sel = $('skuHelperVendor');
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">-- 选择供应商 --</option>';
+    SKU_SUPPLIERS.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.code;
+        opt.textContent = s.code + ' ' + s.name;
+        sel.appendChild(opt);
+    });
+    if (prev) sel.value = prev;
+}
+
+function onSkuHelperChange() {
+    const category = $('skuHelperCategory').value.trim();
+    const spec = $('skuHelperSpec').value.trim().toUpperCase();
+    const vendor = $('skuHelperVendor').value.trim().toUpperCase();
+
+    if (category) {
+        $('skuHelperHint').innerHTML = SKU_CAT_HINTS[category] || '暂无提示';
+    }
+
+    let sku = '';
+    if (category) sku += category;
+    if (spec) sku += (sku ? '-' : '') + spec;
+    if (vendor) sku += (sku ? '-' : '') + vendor;
+
+    $('skuHelperPreview').textContent = sku || '--';
+    $('btnSkuHelperApply').disabled = !(category && spec);
+}
+
+function openSkuHelper() {
+    loadSkuCategories();
+    loadSkuSuppliers();
+    const name = $('in_name').value.trim();
+    if (name) {
+        const guessed = guessCategoryFromName(name);
+        if (guessed) $('skuHelperCategory').value = guessed;
+    }
+    $('skuHelperModal').classList.add('show');
+    setTimeout(() => $('skuHelperSpec').focus(), 100);
+    onSkuHelperChange();
+}
+
+function closeSkuHelper() {
+    $('skuHelperModal').classList.remove('show');
+}
+
+function applySkuHelper() {
+    const sku = $('skuHelperPreview').textContent;
+    if (sku && sku !== '--') {
+        $('in_sku').value = sku;
+        $('in_sku').dispatchEvent(new Event('input', { bubbles: true }));
+        skuAutoFilledFromName = false;
+        closeSkuHelper();
+    }
+}
+
+function guessCategoryFromName(name) {
+    for (const [code, keywords] of Object.entries(SKU_NAME_KEYWORDS)) {
+        for (const kw of keywords) {
+            if (name.includes(kw)) return code;
+        }
+    }
+    return null;
+}
+
+function openSkuCategoryManager() {
+    loadSkuCategoryList();
+    $('skuCategoryModal').classList.add('show');
+}
+
+function closeSkuCategoryManager() {
+    $('skuCategoryModal').classList.remove('show');
+}
+
+function loadSkuCategoryList() {
+    $('skuCategoryListBody').innerHTML = SKU_CATEGORIES.map(c =>
+        `<tr><td><b>${esc(c.code)}</b></td><td>${esc(c.name)}</td><td><button class="btn btn-sm btn-outline" onclick="deleteSkuCategory('${esc(c.code)}')">删除</button></td></tr>`
+    ).join('');
+}
+
+function addSkuCategory() {
+    const code = $('newCatCode').value.trim().toUpperCase();
+    const name = $('newCatName').value.trim();
+    if (!code || !name) return showToast('请填写代码和名称', 'error');
+    if (SKU_CATEGORIES.some(c => c.code === code)) return showToast('该代码已存在', 'error');
+    SKU_CATEGORIES.push({ code, name });
+    loadSkuCategoryList();
+    loadSkuCategories();
+    $('newCatCode').value = '';
+    $('newCatName').value = '';
+    showToast('品类代码已添加', 'success');
+}
+
+function deleteSkuCategory(code) {
+    if (!confirm('确认删除品类代码 ' + code + ' 吗？')) return;
+    const idx = SKU_CATEGORIES.findIndex(c => c.code === code);
+    if (idx !== -1) {
+        SKU_CATEGORIES.splice(idx, 1);
+        loadSkuCategoryList();
+        loadSkuCategories();
+        showToast('品类代码已删除', 'success');
+    }
+}
+
+function openSkuSupplierManager() {
+    loadSkuSupplierList();
+    $('skuSupplierModal').classList.add('show');
+}
+
+function closeSkuSupplierManager() {
+    $('skuSupplierModal').classList.remove('show');
+}
+
+function loadSkuSupplierList() {
+    $('skuSupplierListBody').innerHTML = SKU_SUPPLIERS.map(s =>
+        `<tr><td><b>${esc(s.code)}</b></td><td>${esc(s.name)}</td><td><button class="btn btn-sm btn-outline" onclick="deleteSkuSupplier('${esc(s.code)}')">删除</button></td></tr>`
+    ).join('');
+}
+
+function addSkuSupplier() {
+    const code = $('newSupCode').value.trim().toUpperCase();
+    const name = $('newSupName').value.trim();
+    if (!code || !name) return showToast('请填写代码和供应商名称', 'error');
+    if (SKU_SUPPLIERS.some(s => s.code === code)) return showToast('该代码已存在', 'error');
+    SKU_SUPPLIERS.push({ code, name });
+    loadSkuSupplierList();
+    loadSkuSuppliers();
+    $('newSupCode').value = '';
+    $('newSupName').value = '';
+    showToast('供应商代码已添加', 'success');
+}
+
+function deleteSkuSupplier(code) {
+    if (!confirm('确认删除供应商代码 ' + code + ' 吗？')) return;
+    const idx = SKU_SUPPLIERS.findIndex(s => s.code === code);
+    if (idx !== -1) {
+        SKU_SUPPLIERS.splice(idx, 1);
+        loadSkuSupplierList();
+        loadSkuSuppliers();
+        showToast('供应商代码已删除', 'success');
+    }
+}
+
+// ========== Tab Switching ==========
+document.querySelectorAll('.tab-item').forEach(tab => {
             tab.addEventListener('click', function() {
                 const name = this.dataset.tab;
                 document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
@@ -1533,6 +1882,8 @@
         document.addEventListener('DOMContentLoaded', async () => {
             $('in_sku').addEventListener('input', () => onInboundSkuInput());
             $('in_sku').addEventListener('change', () => onInboundSkuInput());
+            $('in_name').addEventListener('input', () => onInboundNameInput());
+            $('in_name').addEventListener('blur', () => setTimeout(() => hideNameDropdown(), 200));
             $('out_sku').addEventListener('input', () => onSkuInput('out_sku'));
             $('out_sku').addEventListener('blur', () => setTimeout(() => $('out_search_dropdown').style.display = 'none', 200));
             const restored = await tryRestoreSession();
@@ -1725,6 +2076,7 @@
         // 缓存当前查找到的已存在 SKU 的原始价格，用于用户留空时保留
         let inboundExistingPrice = null;
         let inboundIsNewSku = true;
+        let skuAutoFilledFromName = false; // Track if SKU was auto-filled from name input
 
         function onInboundSkuInput() {
             clearTimeout(inboundLookupTimer);
@@ -1742,9 +2094,12 @@
                     } catch(e) {}
                 }
                 if (item) {
+                    // Only update name field if it wasn't auto-filled from name (to prevent overwriting user input)
+                    if (!skuAutoFilledFromName && item.name) {
+                        $('in_name').value = item.name;
+                    }
                     inboundIsNewSku = false;
                     inboundExistingPrice = item.price || 0;
-                    if (item.name) $('in_name').value = item.name;
                     if (item.price) $('in_price').value = item.price;
                     if (item.location) $('in_location').value = item.location;
                     if (item.safety_stock) $('in_safety').value = item.safety_stock;
@@ -1756,7 +2111,104 @@
                     $('in_location').value = '';
                     $('in_safety').value = '0';
                 }
+                // Reset the flag when user manually types SKU
+                skuAutoFilledFromName = false;
             }, 200);
+        }
+
+        function onInboundNameInput() {
+            clearTimeout(inboundLookupTimer);
+            inboundLookupTimer = setTimeout(async () => {
+                const name = $('in_name').value.trim();
+                if (!name) {
+                    // Clear SKU field when name is cleared
+                    if (!skuAutoFilledFromName) {
+                        $('in_sku').value = '';
+                    }
+                    skuAutoFilledFromName = false;
+                    hideNameDropdown();
+                    return;
+                }
+
+                const items = await loadAllItems();
+                const matches = items.filter(item =>
+                    item.name.toLowerCase().includes(name.toLowerCase())
+                );
+
+                if (matches.length === 1) {
+                    // Exact match - auto-fill SKU and other fields
+                    const item = matches[0];
+                    $('in_sku').value = item.sku;
+                    inboundIsNewSku = false;
+                    inboundExistingPrice = item.price || 0;
+                    skuAutoFilledFromName = true; // Mark that SKU was auto-filled from name
+
+                    // Auto-fill other fields
+                    if (item.name) $('in_name').value = item.name;
+                    if (item.price) $('in_price').value = item.price;
+                    if (item.location) $('in_location').value = item.location;
+                    if (item.safety_stock) $('in_safety').value = item.safety_stock;
+
+                    showToast('已自动匹配: ' + item.sku, 'info');
+                    hideNameDropdown();
+                } else if (matches.length > 1) {
+                    // Multiple matches - show dropdown
+                    showNameDropdown(matches);
+                } else {
+                    // No matches - clear SKU and show hint
+                    if (!skuAutoFilledFromName) {
+                        $('in_sku').value = '';
+                    }
+                    skuAutoFilledFromName = false;
+                    showNameDropdownHint(name);
+                }
+            }, 300);
+        }
+
+        function showNameDropdown(matches) {
+            const dd = $('in_name_dropdown');
+            if (matches.length === 0) {
+                dd.style.display = 'none';
+                return;
+            }
+            dd.innerHTML = matches.slice(0, 8).map(item =>
+                `<div style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:13px"
+                   onmouseover="this.style.background='#f8f9fa'"
+                   onmouseout="this.style.background=''"
+                   onclick="selectInboundNameItem('${esc(item.sku)}', '${esc(item.name)}')">`
+                + `<span style="font-weight:600;color:var(--primary)"> ${esc(item.sku)} </span> `
+                + `<span>${esc(item.name)}</span> `
+                + `<span style="color:var(--text-light);font-size:12px">库存:${item.total_stock}</span>`
+                + `</div>`
+            ).join('');
+            dd.style.display = 'block';
+        }
+
+        function showNameDropdownHint(name) {
+            const dd = $('in_name_dropdown');
+            const catCode = guessCategoryFromName(name);
+            const catInfo = catCode ? SKU_CATEGORIES.find(c => c.code === catCode) : null;
+            let html = `<div style="padding:10px 14px;color:#8d99ae">
+                未找到 "${esc(name)}" 的匹配项。`;
+            if (catInfo) {
+                html += `<span style="color:var(--primary);font-weight:600"> 检测到品类: ${esc(catInfo.code)} ${esc(catInfo.name)}</span>`;
+            }
+            html += `<div style="margin-top:6px"><button class="btn btn-sm btn-primary" onclick="hideNameDropdown();openSkuHelper()" style="padding:4px 12px;font-size:12px"><i class="bi bi-tag"></i> 打开编码助手</button></div></div>`;
+            dd.innerHTML = html;
+            dd.style.display = 'block';
+        }
+
+        function hideNameDropdown() {
+            $('in_name_dropdown').style.display = 'none';
+        }
+
+        function selectInboundNameItem(sku, name) {
+            $('in_sku').value = sku;
+            $('in_name').value = name;
+            $('in_name_dropdown').style.display = 'none';
+            // Trigger SKU input to auto-fill other fields
+            $('in_sku').dispatchEvent(new Event('input', { bubbles: true }));
+            skuAutoFilledFromName = true; // Mark that SKU was selected from name
         }
 
         // ========== localStorage Cache ==========
@@ -2812,6 +3264,22 @@
         window.closeRolePermModal = closeRolePermModal;
         window.saveRolePerm = saveRolePerm;
         window.selectRolePermTab = selectRolePermTab;
+        window.forceChangePassword = forceChangePassword;
+        window.onInboundNameInput = onInboundNameInput;
+        window.hideNameDropdown = hideNameDropdown;
+        window.selectInboundNameItem = selectInboundNameItem;
+        window.openSkuHelper = openSkuHelper;
+        window.closeSkuHelper = closeSkuHelper;
+        window.onSkuHelperChange = onSkuHelperChange;
+        window.applySkuHelper = applySkuHelper;
+        window.openSkuCategoryManager = openSkuCategoryManager;
+        window.closeSkuCategoryManager = closeSkuCategoryManager;
+        window.addSkuCategory = addSkuCategory;
+        window.deleteSkuCategory = deleteSkuCategory;
+        window.openSkuSupplierManager = openSkuSupplierManager;
+        window.closeSkuSupplierManager = closeSkuSupplierManager;
+        window.addSkuSupplier = addSkuSupplier;
+        window.deleteSkuSupplier = deleteSkuSupplier;
 
         // Modal overlay close
         document.addEventListener('click', function(e) {
