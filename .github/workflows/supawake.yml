@@ -1,0 +1,25 @@
+name: Supawake — Keep Supabase Free Tier Active
+
+on:
+  schedule:
+    # Every 3 days at 08:00 UTC (16:00 CST)
+    - cron: '0 8 */3 * *'
+  workflow_dispatch:  # Manual trigger for testing
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST API
+        run: |
+          curl -s -o /dev/null -w "REST: HTTP %{http_code}\n" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/" \
+            -H "apikey: ${{ secrets.SUPABASE_KEY }}"
+
+      - name: Ping Supabase Auth endpoint
+        run: |
+          curl -s -o /dev/null -w "Auth: HTTP %{http_code}\n" \
+            "${{ secrets.SUPABASE_URL }}/auth/v1/health"
+
+      - name: Timestamp
+        run: echo "Last wake-up at $(date -u '+%Y-%m-%d %H:%M UTC')"
