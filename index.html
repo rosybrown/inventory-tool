@@ -1135,8 +1135,6 @@
 
         async function enterApp(user) {
             currentUser = user;
-            // Load role permissions from server
-            await loadRolePermissions();
 
             // Persist login session (no password stored)
             try { localStorage.setItem('inventory_user', JSON.stringify({
@@ -1145,9 +1143,13 @@
                 role: user.role
             })); } catch(e) {}
 
+            // Render UI immediately — do NOT await role permissions or item cache.
+            // Both are non-blocking: permissions fall back to "show all tabs" on failure
+            // (degradation policy), and allItemsCache only backs the search dropdown.
+            // Awaiting them was the main cause of long login wait times.
             $('loginPage').style.display = 'none';
             $('mainApp').style.display = 'block';
-            applyRoleVisibility();
+            applyRoleVisibility(); // applies immediately; re-applied once permissions load
             // Switch to first visible tab
             const firstTab = document.querySelector('.tab-item:not([style*="display: none"]):not([style*="display:none"])');
             if (firstTab) {
@@ -1161,8 +1163,19 @@
                 '<span><i class="bi bi-person-circle"></i> ' + user.display_name + ' · ' + roleLabel(user.role) + '</span>' +
                 '<span style="cursor:pointer;opacity:0.7" onclick="openPwModal()" title="修改密码"><i class="bi bi-key"></i> 密码</span>' +
                 '<span style="cursor:pointer;opacity:0.7" onclick="handleLogout()" title="退出登录"><i class="bi bi-box-arrow-right"></i> 退出</span>';
+
+            // Show cached inventory instantly, then refresh from DB in the background.
             loadInventory(true);
-            await loadAllItems();
+            // Kick off item cache (for search) without blocking — short-circuits if
+            // prefetchData already populated allItemsCache.
+            loadAllItems();
+
+            // Load role permissions in the background; re-apply visibility once it
+            // arrives so tabs tighten from the (safe) "all visible" fallback to the
+            // real role set. Errors keep the fallback (show all tabs).
+            loadRolePermissions().then(() => {
+                if (currentUser) applyRoleVisibility();
+            });
         }
 
         function handleLogin() {
@@ -1597,7 +1610,7 @@
         }
 
 // ========== SKU Encoding Helper ==========
-const SKU_CATEGORIES = [
+const SKU_CATEGORIES_DEFAULT = [
     { code: 'BYK', name: '半圆键铣刀' },
     { code: 'LM', name: '立铣刀/球刀/成型铣刀' },
     { code: 'ZT', name: '直钻/钻花/合金钻头' },
@@ -1617,8 +1630,10 @@ const SKU_CATEGORIES = [
     { code: 'CD', name: '车刀/镗刀（整体式）' },
     { code: 'TX', name: 'T型刀/异形铣刀' }
 ];
+let SKU_CATEGORIES;
+try { SKU_CATEGORIES = JSON.parse(localStorage.getItem('sku_categories')) || [...SKU_CATEGORIES_DEFAULT]; } catch(e) { SKU_CATEGORIES = [...SKU_CATEGORIES_DEFAULT]; }
 
-const SKU_SUPPLIERS = [
+const SKU_SUPPLIERS_DEFAULT = [
     { code: 'HG', name: '哈工' },
     { code: 'ZH', name: '志华' },
     { code: 'LX', name: '零星' },
@@ -1645,6 +1660,8 @@ const SKU_SUPPLIERS = [
     { code: 'LH', name: '两汇机电' },
     { code: 'JEFF', name: 'JEFF' }
 ];
+let SKU_SUPPLIERS;
+try { SKU_SUPPLIERS = JSON.parse(localStorage.getItem('sku_suppliers')) || [...SKU_SUPPLIERS_DEFAULT]; } catch(e) { SKU_SUPPLIERS = [...SKU_SUPPLIERS_DEFAULT]; }
 
 const SKU_CAT_HINTS = {
     'BYK': '格式: D{直径}-{宽度}[-P公差][-N公差][材质]-供应商<br>例: D23-5-P045-DH',
@@ -1789,6 +1806,7 @@ function addSkuCategory() {
     if (!code || !name) return showToast('请填写代码和名称', 'error');
     if (SKU_CATEGORIES.some(c => c.code === code)) return showToast('该代码已存在', 'error');
     SKU_CATEGORIES.push({ code, name });
+    try { localStorage.setItem('sku_categories', JSON.stringify(SKU_CATEGORIES)); } catch(e) {}
     loadSkuCategoryList();
     loadSkuCategories();
     $('newCatCode').value = '';
@@ -1801,6 +1819,7 @@ function deleteSkuCategory(code) {
     const idx = SKU_CATEGORIES.findIndex(c => c.code === code);
     if (idx !== -1) {
         SKU_CATEGORIES.splice(idx, 1);
+        try { localStorage.setItem('sku_categories', JSON.stringify(SKU_CATEGORIES)); } catch(e) {}
         loadSkuCategoryList();
         loadSkuCategories();
         showToast('品类代码已删除', 'success');
@@ -1828,6 +1847,7 @@ function addSkuSupplier() {
     if (!code || !name) return showToast('请填写代码和供应商名称', 'error');
     if (SKU_SUPPLIERS.some(s => s.code === code)) return showToast('该代码已存在', 'error');
     SKU_SUPPLIERS.push({ code, name });
+    try { localStorage.setItem('sku_suppliers', JSON.stringify(SKU_SUPPLIERS)); } catch(e) {}
     loadSkuSupplierList();
     loadSkuSuppliers();
     $('newSupCode').value = '';
@@ -1840,6 +1860,7 @@ function deleteSkuSupplier(code) {
     const idx = SKU_SUPPLIERS.findIndex(s => s.code === code);
     if (idx !== -1) {
         SKU_SUPPLIERS.splice(idx, 1);
+        try { localStorage.setItem('sku_suppliers', JSON.stringify(SKU_SUPPLIERS)); } catch(e) {}
         loadSkuSupplierList();
         loadSkuSuppliers();
         showToast('供应商代码已删除', 'success');
@@ -1850,6 +1871,7 @@ function deleteSkuSupplier(code) {
 document.querySelectorAll('.tab-item').forEach(tab => {
             tab.addEventListener('click', function() {
                 const name = this.dataset.tab;
+                closeScanner();
                 document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
                 document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
                 this.classList.add('active');
@@ -1895,6 +1917,7 @@ document.querySelectorAll('.tab-item').forEach(tab => {
             } else {
                 prefetchData();
             }
+            window.addEventListener('pagehide', closeScanner);
         });
 
         // ========== Camera Scanner ==========
@@ -2237,7 +2260,7 @@ document.querySelectorAll('.tab-item').forEach(tab => {
                 (item.name || '').toLowerCase().includes(q) ||
                 (item.location || '').toLowerCase().includes(q)
             );
-            renderInventory(filtered, inventoryTotalCount || inventoryFullData.length);
+            renderInventory(filtered, filtered.length);
         }
         function renderInventory(data, totalCount) {
             const tbody = $('inventoryBody');
@@ -2511,6 +2534,10 @@ document.querySelectorAll('.tab-item').forEach(tab => {
             if (qty <= 0 || qty > borrowed) return showToast('请输入有效的归还数量', 'error');
             if (lossQty > 0 && !reason) return showToast('请填写损耗原因', 'error');
 
+            // Double-submit prevention: disable the confirm button during RPC
+            const btn = $('returnModal').querySelector('.btn-primary');
+            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> 归还中...'; }
+
             setStatus('归还中...', 'wait');
             try {
                 const { data, error } = await supabase.rpc('handle_return', {
@@ -2535,6 +2562,7 @@ document.querySelectorAll('.tab-item').forEach(tab => {
             } catch (err) {
                 showToast('归还失败: ' + err.message, 'error');
             } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-lg"></i> 确认归还'; }
                 setStatus('已连接', 'ok');
             }
         }
@@ -2645,15 +2673,15 @@ document.querySelectorAll('.tab-item').forEach(tab => {
         async function loadHistory() {
             setStatus('加载记录...', 'wait');
             try {
-                const { data, error } = await supabase.from('transaction_logs').select('*').order('created_at', { ascending: false }).limit(100);
-                if (error) throw error;
+                const logs = await fetchAll('transaction_logs', 'created_at', false, 500);
                 const tbody = $('historyBody');
-                if (!data || data.length === 0) {
+                if (!logs || logs.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><i class="bi bi-journal"></i><p>暂无交易记录</p></div></td></tr>';
+                    setStatus('已连接', 'ok');
                     return;
                 }
                 const typeMap = { 'IN': ['入库','type-in'], 'OUT': ['出库','type-out'], 'RETURN': ['归还','type-return'], 'LOSS': ['损耗','type-loss'] };
-                tbody.innerHTML = data.map(log => {
+                tbody.innerHTML = logs.map(log => {
                     const [label, cls] = typeMap[log.type] || [log.type, ''];
                     return `<tr>
                         <td style="white-space:nowrap">${formatTime(log.created_at)}</td>
@@ -3162,7 +3190,7 @@ document.querySelectorAll('.tab-item').forEach(tab => {
 
                     const preview = importData.slice(0, 10);
                     $('importPreviewBody').innerHTML = preview.map(item =>
-                        '<tr><td><span class="sku-badge">' + esc(item.sku) + '</span></td><td>' + esc(item.name) + '</td><td>¥' + item.price + '</td><td>' + esc(item.location || '-') + '</td></tr>'
+                        '<tr><td><span class="sku-badge">' + esc(item.sku) + '</span></td><td>' + esc(item.name) + '</td><td>¥' + (item.price || 0).toFixed(2) + '</td><td>' + esc(item.location || '-') + '</td></tr>'
                     ).join('');
 
                     $('importCount').textContent = '共 ' + importData.length + ' 条记录（匹配列：' + skuCol + ' → SKU，' + nameCol + ' → 名称）';
@@ -3298,6 +3326,9 @@ document.querySelectorAll('.tab-item').forEach(tab => {
         // Password modal enter key
         document.getElementById('pwConfirm').addEventListener('keydown', function(e) {
             if (e.key === 'Enter') changePassword();
+        });
+        document.getElementById('forcePwConfirm').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') forceChangePassword();
         });
     })();
     </script>
