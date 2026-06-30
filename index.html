@@ -385,6 +385,9 @@
             .app-header h1 { font-size: 17px; }
             .app-header .subtitle { font-size: 11px; }
             #headerRightRow { gap: 8px !important; font-size: 12px !important; }
+            .inbound-sku-row { flex-wrap: wrap; }
+            .inbound-sku-row .form-input { flex: 0 0 100% !important; }
+            .inbound-sku-row .btn { flex: 1; min-width: 0; padding: 10px 6px !important; font-size: 12px !important; }
         }
 
         /* ===== Scan Line Animation ===== */
@@ -519,7 +522,7 @@
                 <div class="card-body-custom">
                     <div class="form-group">
                         <label class="form-label">SKU / 扫码</label>
-                        <div style="display:flex;gap:8px">
+                        <div class="inbound-sku-row" style="display:flex;gap:8px">
                             <input type="text" class="form-input" id="in_sku" placeholder="扫描条码或手动输入 SKU" autofocus style="flex:1">
                             <button type="button" class="btn btn-sm btn-outline" onclick="openScanner('in_sku')" style="width:auto;flex-shrink:0;padding:10px 14px">
                                 <i class="bi bi-camera"></i> 扫码
@@ -2022,6 +2025,30 @@ document.querySelectorAll('.tab-item').forEach(tab => {
         // ========== SKU/名称搜索 ==========
         let skuLookupTimer = null;
         let allItemsCache = [];
+        let lastTxTimeMap = {};   // SKU → 最新 transaction_logs 时间
+
+        async function loadLastTxTimes() {
+            // 不需要 skus 参数：直接查 transaction_logs 最近 500 条，去重即得各 SKU 最新操作时间
+            // 一次查询搞定，不再对每个 SKU 分批查，大幅减少请求数
+            try {
+                const { data } = await supabase
+                    .from('transaction_logs')
+                    .select('item_sku, created_at')
+                    .order('created_at', { ascending: false })
+                    .limit(500);
+                if (data) {
+                    const newMap = {};
+                    data.forEach(tx => {
+                        if (!newMap[tx.item_sku]) {
+                            newMap[tx.item_sku] = tx.created_at;
+                        }
+                    });
+                    lastTxTimeMap = newMap;
+                }
+            } catch(e) {
+                console.warn('loadLastTxTimes failed:', e);
+            }
+        }
 
         async function loadAllItems() {
             if (allItemsCache.length > 0) return allItemsCache;
@@ -2249,6 +2276,7 @@ document.querySelectorAll('.tab-item').forEach(tab => {
         }
         let inventoryFullData = [];
         let inventoryTotalCount = 0;
+        let inventoryDisplayLimit = 200; // 默认只显示前 200 条，0 表示不限
         function onInvSearch() {
             const q = ($('invSearch').value || '').toLowerCase().trim();
             if (!q) {
@@ -2270,8 +2298,21 @@ document.querySelectorAll('.tab-item').forEach(tab => {
                 $('headerStockInfo').textContent = '暂无数据';
                 return;
             }
+            // 按 transaction_logs 最新操作时间降序（最近操作过的排最前）
+            const sorted = [...data].sort((a, b) => {
+                const tA = lastTxTimeMap[a.sku];
+                const tB = lastTxTimeMap[b.sku];
+                if (tA && tB) return new Date(tB) - new Date(tA);
+                if (tA) return -1;
+                if (tB) return 1;
+                return 0;
+            });
+            // 限制显示条数：默认 200，搜索/显示全部时不受限
+            const total = totalCount || data.length;
+            const isLimited = inventoryDisplayLimit > 0 && sorted.length === total && total > inventoryDisplayLimit;
+            const displayData = isLimited ? sorted.slice(0, inventoryDisplayLimit) : sorted;
             let lowCount = 0;
-            tbody.innerHTML = data.map(item => {
+            tbody.innerHTML = displayData.map(item => {
                 const isLow = item.total_stock <= (item.safety_stock || 0);
                 if (isLow) lowCount++;
                 return `<tr>
@@ -2280,29 +2321,36 @@ document.querySelectorAll('.tab-item').forEach(tab => {
                     <td>¥${(item.price || 0).toFixed(2)}</td>
                     <td class="${isLow ? 'stock-low' : 'stock-ok'}">${item.total_stock}</td>
                     <td><span class="stock-editable" onclick="editSafetyStock('${esc(item.sku)}', ${item.safety_stock || 0})" title="点击修改">${item.safety_stock || 0}</span></td>
-                    <td>${esc(item.location || '-')}</td>
+                    <td><span class="stock-editable" onclick="editLocation('${esc(item.sku)}', '${esc(item.location || '')}')" title="点击修改库位">${esc(item.location || '-')}</span></td>
                     <td>${isLow ? '<span class="stock-low">⚠ 不足</span>' : '<span class="stock-ok">正常</span>'}</td>
                 </tr>`;
             }).join('');
             // 底部提示行
-            if (totalCount && totalCount > data.length) {
+            if (isLimited) {
+                tbody.innerHTML += `<tr><td colspan="7" style="text-align:center;padding:16px">
+                    <span style="color:var(--text-light);font-size:13px">当前显示 ${inventoryDisplayLimit} / ${total} 条</span>
+                    <button class="btn-return" onclick="loadAllInventory()" style="margin-left:12px">显示全部 ${total} 条</button>
+                </td></tr>`;
+            } else if (totalCount && totalCount > data.length) {
                 tbody.innerHTML += `<tr><td colspan="7" style="text-align:center;padding:16px">
                     <span style="color:var(--text-light);font-size:13px">当前显示 ${data.length} / ${totalCount} 条</span>
                     <button class="btn-return" onclick="loadAllInventory()" style="margin-left:12px">显示全部 ${totalCount} 条</button>
                 </td></tr>`;
             }
-            $('dataCount').textContent = `共 ${totalCount || data.length} 种物品`;
-            $('headerStockInfo').textContent = lowCount > 0 ? `⚠ ${lowCount} 项库存不足` : `${(totalCount || data.length)} 种物品`;
+            $('dataCount').textContent = `共 ${total} 种物品`;
+            $('headerStockInfo').textContent = lowCount > 0 ? `⚠ ${lowCount} 项库存不足` : `${total} 种物品`;
         }
 
         // ========== Load Inventory ==========
         async function loadInventory(showCacheFirst) {
-            // 先显示缓存数据（秒开）
+            // 缓存显示（略）
             if (showCacheFirst) {
                 const cached = loadCache(CACHE_KEY_INV);
                 if (cached) {
                     inventoryFullData = cached;
-                    renderInventory(cached, cached.length);
+                    inventoryDisplayLimit = 200;
+                    loadLastTxTimes();
+                    onInvSearch();
                     const cacheTime = localStorage.getItem(CACHE_KEY_TIME);
                     if (cacheTime) {
                         const age = Math.floor((Date.now() - parseInt(cacheTime)) / 60000);
@@ -2311,24 +2359,25 @@ document.querySelectorAll('.tab-item').forEach(tab => {
                 }
             }
 
-            // 从数据库加载（默认 200 条）
+            // 从数据库加载全部 + 排序时间并行执行
             setStatus('加载库存...', 'wait');
             try {
-                const [dataRes, countRes] = await Promise.all([
-                    supabase.from('inventory_items').select('*').order('sku').limit(200),
-                    supabase.from('inventory_items').select('sku', { count: 'exact', head: true })
+                const [data] = await Promise.all([
+                    fetchAll('inventory_items', 'sku', true, 500),
+                    loadLastTxTimes()
                 ]);
-                if (dataRes.error) throw dataRes.error;
-                const totalCount = countRes.count || dataRes.data.length;
-                inventoryFullData = dataRes.data;
+                const totalCount = data.length;
+                inventoryFullData = data;
                 inventoryTotalCount = totalCount;
+                inventoryDisplayLimit = 200;
                 onInvSearch();
-                saveCache(CACHE_KEY_INV, dataRes.data);
+                saveCache(CACHE_KEY_INV, data);
                 localStorage.setItem(CACHE_KEY_TIME, Date.now().toString());
                 setStatus('已连接', 'ok');
             } catch (err) {
                 const cached = loadCache(CACHE_KEY_INV);
                 if (cached && showCacheFirst) {
+                    inventoryDisplayLimit = 0;
                     setStatus('离线模式 — 显示缓存数据', 'err');
                 } else {
                     setStatus('连接失败', 'err');
@@ -2341,9 +2390,13 @@ document.querySelectorAll('.tab-item').forEach(tab => {
         async function loadAllInventory() {
             setStatus('加载全部库存...', 'wait');
             try {
-                const data = await fetchAll('inventory_items', 'sku', true, 500);
+                const [data] = await Promise.all([
+                    fetchAll('inventory_items', 'sku', true, 500),
+                    loadLastTxTimes()
+                ]);
                 inventoryFullData = data;
                 inventoryTotalCount = data.length;
+                inventoryDisplayLimit = 0;
                 onInvSearch();
                 saveCache(CACHE_KEY_INV, data);
                 localStorage.setItem(CACHE_KEY_TIME, Date.now().toString());
@@ -2661,6 +2714,27 @@ document.querySelectorAll('.tab-item').forEach(tab => {
                 const { error } = await supabase.from('inventory_items').update({ safety_stock: num }).eq('sku', sku);
                 if (error) throw error;
                 showToast('安全库存已更新', 'success');
+                loadInventory();
+            } catch (err) {
+                showToast('更新失败: ' + err.message, 'error');
+            } finally {
+                setStatus('已连接', 'ok');
+            }
+        }
+
+        // ========== Location Inline Edit ==========
+        async function editLocation(sku, currentVal) {
+            if (!currentUser || !['admin','warehouse','purchase'].includes(currentUser.role)) {
+                return showToast('无权限修改库位', 'error');
+            }
+            const newVal = prompt('修改库位 (SKU: ' + sku + ')', currentVal === '-' ? '' : currentVal);
+            if (newVal === null) return;
+            const trimmed = newVal.trim();
+            setStatus('保存中...', 'wait');
+            try {
+                const { error } = await supabase.from('inventory_items').update({ location: trimmed || null }).eq('sku', sku);
+                if (error) throw error;
+                showToast('库位已更新', 'success');
                 loadInventory();
             } catch (err) {
                 showToast('更新失败: ' + err.message, 'error');
@@ -3286,6 +3360,7 @@ document.querySelectorAll('.tab-item').forEach(tab => {
         window.onLossReasonChange = onLossReasonChange;
         window.loadLossStats = loadLossStats;
         window.editSafetyStock = editSafetyStock;
+        window.editLocation = editLocation;
         window.onActiveSearch = onActiveSearch;
         window.togglePersonGroup = togglePersonGroup;
         window.openPwModal = openPwModal;
