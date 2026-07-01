@@ -179,6 +179,7 @@
         table {
             width: 100%;
             border-collapse: collapse;
+            table-layout: auto; /* 内容决定列宽，自动调整 */
         }
         th {
             font-size: 12px;
@@ -189,12 +190,36 @@
             padding: 10px 12px;
             border-bottom: 2px solid #f0f0f0;
             white-space: nowrap;
+            position: relative;
+            user-select: none;
         }
         td {
             padding: 12px;
             border-bottom: 1px solid #f5f5f5;
             font-size: 14px;
             vertical-align: middle;
+            white-space: nowrap; /* 默认不换行，防止挤压 */
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        /* 名称列允许适当换行，但限制最大宽度 */
+        td:nth-child(2), th:nth-child(2) {
+            white-space: normal;
+            max-width: 200px;
+        }
+        /* 列宽拖拽手柄 */
+        .resize-handle {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 5px;
+            cursor: col-resize;
+            z-index: 10;
+            transition: background 0.2s;
+        }
+        .resize-handle:hover, .resize-handle.dragging {
+            background: var(--primary);
         }
         tr:hover td { background: #f8f9fa; }
         .sku-badge {
@@ -504,6 +529,7 @@
                                     <th>安全库存</th>
                                     <th>库位</th>
                                     <th>状态</th>
+                                    <th style="width:50px;text-align:center">操作</th>
                                 </tr>
                             </thead>
                             <tbody id="inventoryBody"></tbody>
@@ -594,6 +620,38 @@
                             </button>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 物料变更管理 -->
+        <div class="card" id="skuReplCard" style="display:none">
+            <div class="card-header-custom">
+                <h5><i class="bi bi-arrow-left-right" style="color:var(--primary)"></i> 物料变更</h5>
+                <button class="btn btn-sm btn-outline" onclick="loadSkuReplacements()">
+                    <i class="bi bi-arrow-clockwise"></i> 刷新
+                </button>
+            </div>
+            <div class="card-body-custom">
+                <p class="hint" style="margin-bottom:12px">配置物料替换关系后，出库领用新件时会检查旧件库存是否消耗完毕。仅管理员可操作。</p>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+                    <input type="text" class="form-input" id="replOldSku" placeholder="旧 SKU *" style="width:140px">
+                    <input type="text" class="form-input" id="replNewSku" placeholder="新 SKU *" style="width:140px">
+                    <select class="form-input" id="replReason" style="width:120px">
+                        <option value="供应商变更">供应商变更</option>
+                        <option value="规格升级">规格升级</option>
+                        <option value="工艺改进">工艺改进</option>
+                        <option value="其他">其他</option>
+                    </select>
+                    <button class="btn btn-sm btn-primary" onclick="addSkuReplacement()" style="width:auto;padding:0 20px">
+                        <i class="bi bi-plus-lg"></i> 新增
+                    </button>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>旧 SKU</th><th>新 SKU</th><th>原因</th><th>备注</th><th>创建时间</th><th>操作</th></tr></thead>
+                        <tbody id="skuReplBody"></tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -712,6 +770,10 @@
                     </div>
                 </div>
                 <div class="card-body-custom">
+                    <div style="display:flex;gap:8px;margin-bottom:12px">
+                        <span class="loss-view-tab" data-view="normal" onclick="switchLossView('normal')" style="padding:6px 14px;cursor:pointer;border-bottom:2px solid var(--primary);font-size:13px;font-weight:600;color:var(--primary)">损耗统计</span>
+                        <span class="loss-view-tab" data-view="defect" onclick="switchLossView('defect')" style="padding:6px 14px;cursor:pointer;border-bottom:2px solid transparent;font-size:13px;color:var(--text-light)">待退供应商</span>
+                    </div>
                     <div class="stat-grid" id="lossStatGrid">
                         <div class="stat-card"><div class="num" id="lossTotalCount">0</div><div class="lbl">本月损耗笔数</div></div>
                         <div class="stat-card"><div class="num" id="lossTotalQty">0</div><div class="lbl">本月损耗数量</div></div>
@@ -731,7 +793,7 @@
                                     <th>SKU</th>
                                     <th>名称</th>
                                     <th>数量</th>
-                                    <th>金额</th>
+                                    <th id="lossColExtra">金额</th>
                                     <th>原因</th>
                                     <th>领用人</th>
                                 </tr>
@@ -790,6 +852,9 @@
                             <i class="bi bi-gear"></i> 编辑
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
                 </div>
             </div>
         </div>
@@ -912,6 +977,19 @@
             <div class="info-row"><span class="label">在借数量</span><span class="val" id="returnQtyBorrowed">-</span></div>
             <hr class="divider">
             <div class="form-group">
+                <label class="form-label">归还类型</label>
+                <select class="form-input" id="returnType" style="width:100%">
+                    <option value="exchange">以旧换新</option>
+                    <option value="wrong_pick">领用错误</option>
+                    <option value="defect">刀具异常</option>
+                    <option value="other">其他</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">备注说明</label>
+                <input type="text" class="form-input" id="returnNote" placeholder="可选，如规格看错了、刀具有裂纹等" style="width:100%">
+            </div>
+            <div class="form-group">
                 <label class="form-label">归还数量</label>
                 <input type="number" class="form-input" id="returnQty" min="1" value="1" onchange="onReturnQtyChange()">
                 <div class="hint" id="returnQtyHint" style="margin-top:6px;font-size:12px;color:var(--text-light)"></div>
@@ -935,6 +1013,30 @@
                 <button class="btn btn-outline" onclick="closeReturnModal()">取消</button>
                 <button class="btn btn-primary" onclick="confirmReturn()">
                     <i class="bi bi-check-lg"></i> 确认归还
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Inbound Modal -->
+    <div class="modal-overlay" id="quickInboundModal">
+        <div class="modal-box">
+            <h3><i class="bi bi-lightning-fill" style="color:var(--warning)"></i> 快速入库</h3>
+            <div class="sub">在库存列表中直接入库，无需切换标签页</div>
+            <div class="info-row"><span class="label">SKU</span><span class="val" id="qiSku">-</span></div>
+            <div class="info-row"><span class="label">名称</span><span class="val" id="qiName">-</span></div>
+            <div class="info-row"><span class="label">当前库存</span><span class="val" id="qiStock">-</span></div>
+            <div class="info-row"><span class="label">单价</span><span class="val" id="qiPrice">-</span></div>
+            <hr class="divider">
+            <div class="form-group">
+                <label class="form-label">入库数量 *</label>
+                <input type="number" class="form-input" id="qiQty" value="1" min="1" autofocus>
+            </div>
+            <div class="login-error" id="qiError"></div>
+            <div class="btn-row">
+                <button class="btn btn-outline" onclick="closeQuickInbound()">取消</button>
+                <button class="btn btn-primary" onclick="confirmQuickInbound()">
+                    <i class="bi bi-check-lg"></i> 确认入库
                 </button>
             </div>
         </div>
@@ -1130,6 +1232,86 @@
         function daysSince(ts) {
             if (!ts) return 0;
             return Math.floor((Date.now() - new Date(ts).getTime()) / 86400000);
+        }
+
+        // ========== Table Column Resize ==========
+        function initResizableTable(tableSelector) {
+            const table = document.querySelector(tableSelector);
+            if (!table) return;
+            const ths = table.querySelectorAll('thead th');
+            ths.forEach((th, i) => {
+                // 移除旧的手柄避免重复
+                let handle = th.querySelector('.resize-handle');
+                if (!handle) {
+                    handle = document.createElement('span');
+                    handle.className = 'resize-handle';
+                    th.appendChild(handle);
+                }
+                let startX, startWidth;
+                handle.addEventListener('mousedown', function(e) {
+                    startX = e.pageX;
+                    startWidth = th.offsetWidth;
+                    handle.classList.add('dragging');
+                    document.addEventListener('mousemove', onMove);
+                    document.addEventListener('mouseup', onUp);
+                });
+                function onMove(e) {
+                    const width = Math.max(40, startWidth + (e.pageX - startX));
+                    th.style.width = width + 'px';
+                    th.style.minWidth = width + 'px';
+                    table.querySelectorAll('tbody tr').forEach(tr => {
+                        const td = tr.children[i];
+                        if (td) { td.style.width = width + 'px'; td.style.minWidth = width + 'px'; }
+                    });
+                }
+                function onUp() {
+                    handle.classList.remove('dragging');
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                }
+            });
+        }
+
+        function measureTextWidth(text, font) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.font = font;
+            return ctx.measureText(text).width;
+        }
+
+        function autoResizeInventoryTable() {
+            const table = document.querySelector('#panel-dashboard table');
+            if (!table) return;
+            const ths = table.querySelectorAll('thead th');
+            // 先清空所有自定义列宽，让浏览器重新计算
+            ths.forEach(th => { th.style.width = ''; th.style.minWidth = ''; });
+            table.querySelectorAll('tbody td').forEach(td => { td.style.width = ''; td.style.minWidth = ''; });
+            // 重新计算：只设最小宽度（保证内容不折行），不设死宽度
+            ths.forEach((th, i) => {
+                const style = window.getComputedStyle(th);
+                const font = style.fontWeight + ' ' + style.fontSize + ' ' + style.fontFamily;
+                let maxW = measureTextWidth(th.textContent.trim(), font);
+                const rows = table.querySelectorAll('tbody tr');
+                rows.forEach(tr => {
+                    const td = tr.children[i];
+                    if (!td) return;
+                    const tdStyle = window.getComputedStyle(td);
+                    const tdFont = tdStyle.fontWeight + ' ' + tdStyle.fontSize + ' ' + tdStyle.fontFamily;
+                    let text = td.textContent.trim();
+                    if (tdStyle.whiteSpace === 'normal') {
+                        const words = text.split(/\s+/);
+                        words.forEach(w => { maxW = Math.max(maxW, measureTextWidth(w, tdFont)); });
+                    } else {
+                        maxW = Math.max(maxW, measureTextWidth(text, tdFont));
+                    }
+                });
+                const pad = parseInt(style.paddingLeft) + parseInt(style.paddingRight);
+                // 只设 minWidth，让 table-layout: auto 自由分配剩余空间
+                // 名称列最长 200px，库位列最长 140px，其余在 60~200 之间
+                const minW = Math.max(50, Math.ceil(maxW + pad + 4));
+                const maxWLimit = i === 1 ? 200 : (i === 5 ? 140 : 200);
+                th.style.minWidth = Math.min(minW, maxWLimit) + 'px';
+            });
         }
 
         // ========== Login / Session ==========
@@ -1483,6 +1665,82 @@
                 }
             } catch (err) {
                 showToast('重置失败: ' + err.message, 'error');
+            } finally {
+                setStatus('已连接', 'ok');
+            }
+        }
+
+        // ========== SKU Replacement Management ==========
+        async function loadSkuReplacements() {
+            try {
+                const { data, error } = await supabase.rpc('list_sku_replacements');
+                if (error) throw error;
+                const list = data || [];
+                const tbody = $('skuReplBody');
+                if (list.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><i class="bi bi-arrow-left-right"></i><p>暂无替换记录</p></div></td></tr>';
+                } else {
+                    tbody.innerHTML = list.map(r => `<tr>
+                        <td><span class="sku-badge">${esc(r.old_sku)}</span></td>
+                        <td><span class="sku-badge">${esc(r.new_sku)}</span></td>
+                        <td>${esc(r.reason || '-')}</td>
+                        <td>${esc(r.note || '-')}</td>
+                        <td style="white-space:nowrap">${r.created_at ? formatDate(r.created_at) : '-'}</td>
+                        <td><button class="btn btn-sm btn-outline" onclick="deleteSkuReplacement('${r.id}')" style="color:var(--danger);border-color:var(--danger);padding:4px 10px;font-size:12px">删除</button></td>
+                    </tr>`).join('');
+                }
+            } catch (err) {
+                showToast('加载替换记录失败: ' + err.message, 'error');
+            }
+        }
+
+        async function addSkuReplacement() {
+            const oldSku = $('replOldSku').value.trim().toUpperCase();
+            const newSku = $('replNewSku').value.trim().toUpperCase();
+            const reason = $('replReason').value;
+            if (!oldSku || !newSku) return showToast('请填写旧 SKU 和新 SKU', 'error');
+            setStatus('添加中...', 'wait');
+            try {
+                const { data, error } = await supabase.rpc('add_sku_replacement', {
+                    p_old_sku: oldSku,
+                    p_new_sku: newSku,
+                    p_reason: reason,
+                    p_note: '',
+                    p_admin_username: currentUser?.username || ''
+                });
+                if (error) throw error;
+                if (data && data.success) {
+                    showToast(data.message, 'success');
+                    $('replOldSku').value = '';
+                    $('replNewSku').value = '';
+                    loadSkuReplacements();
+                } else {
+                    showToast(data?.message || '添加失败', 'error');
+                }
+            } catch (err) {
+                showToast('添加失败: ' + err.message, 'error');
+            } finally {
+                setStatus('已连接', 'ok');
+            }
+        }
+
+        async function deleteSkuReplacement(id) {
+            if (!confirm('确认删除该替换记录？')) return;
+            setStatus('删除中...', 'wait');
+            try {
+                const { data, error } = await supabase.rpc('delete_sku_replacement', {
+                    p_id: id,
+                    p_admin_username: currentUser?.username || ''
+                });
+                if (error) throw error;
+                if (data && data.success) {
+                    showToast(data.message, 'success');
+                    loadSkuReplacements();
+                } else {
+                    showToast(data?.message || '删除失败', 'error');
+                }
+            } catch (err) {
+                showToast('删除失败: ' + err.message, 'error');
             } finally {
                 setStatus('已连接', 'ok');
             }
@@ -1884,6 +2142,14 @@ document.querySelectorAll('.tab-item').forEach(tab => {
                 if (name === 'active') loadActiveIssues();
                 if (name === 'loss') loadLossStats();
                 if (name === 'users') loadUserList();
+                if (name === 'inbound') {
+                    if (currentUser?.role === 'admin') {
+                        $('skuReplCard').style.display = 'block';
+                        loadSkuReplacements();
+                    } else {
+                        $('skuReplCard').style.display = 'none';
+                    }
+                }
             });
         });
 
@@ -2293,7 +2559,7 @@ document.querySelectorAll('.tab-item').forEach(tab => {
         function renderInventory(data, totalCount) {
             const tbody = $('inventoryBody');
             if (!data || data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><i class="bi bi-inbox"></i><p>暂无库存数据，请先入库</p></div></td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><i class="bi bi-inbox"></i><p>暂无库存数据，请先入库</p></div></td></tr>';
                 $('dataCount').textContent = '库存: 0';
                 $('headerStockInfo').textContent = '暂无数据';
                 return;
@@ -2323,22 +2589,28 @@ document.querySelectorAll('.tab-item').forEach(tab => {
                     <td><span class="stock-editable" onclick="editSafetyStock('${esc(item.sku)}', ${item.safety_stock || 0})" title="点击修改">${item.safety_stock || 0}</span></td>
                     <td><span class="stock-editable" onclick="editLocation('${esc(item.sku)}', '${esc(item.location || '')}')" title="点击修改库位">${esc(item.location || '-')}</span></td>
                     <td>${isLow ? '<span class="stock-low">⚠ 不足</span>' : '<span class="stock-ok">正常</span>'}</td>
+                    <td style="text-align:center"><button class="btn-return" onclick="openQuickInbound('${esc(item.sku)}')" title="快速入库" style="padding:2px 8px;font-size:13px"><i class="bi bi-lightning-fill"></i></button></td>
                 </tr>`;
             }).join('');
             // 底部提示行
             if (isLimited) {
-                tbody.innerHTML += `<tr><td colspan="7" style="text-align:center;padding:16px">
+                tbody.innerHTML += `<tr><td colspan="8" style="text-align:center;padding:16px">
                     <span style="color:var(--text-light);font-size:13px">当前显示 ${inventoryDisplayLimit} / ${total} 条</span>
                     <button class="btn-return" onclick="loadAllInventory()" style="margin-left:12px">显示全部 ${total} 条</button>
                 </td></tr>`;
             } else if (totalCount && totalCount > data.length) {
-                tbody.innerHTML += `<tr><td colspan="7" style="text-align:center;padding:16px">
+                tbody.innerHTML += `<tr><td colspan="8" style="text-align:center;padding:16px">
                     <span style="color:var(--text-light);font-size:13px">当前显示 ${data.length} / ${totalCount} 条</span>
                     <button class="btn-return" onclick="loadAllInventory()" style="margin-left:12px">显示全部 ${totalCount} 条</button>
                 </td></tr>`;
             }
             $('dataCount').textContent = `共 ${total} 种物品`;
             $('headerStockInfo').textContent = lowCount > 0 ? `⚠ ${lowCount} 项库存不足` : `${total} 种物品`;
+            // 自适应列宽 + 可拖拽手柄
+            requestAnimationFrame(() => {
+                autoResizeInventoryTable();
+                initResizableTable('#panel-dashboard table');
+            });
         }
 
         // ========== Load Inventory ==========
@@ -2522,6 +2794,8 @@ document.querySelectorAll('.tab-item').forEach(tab => {
             const maxQty = issue ? issue.quantity : 1;
             $('returnQty').value = maxQty;
             $('returnQty').max = maxQty;
+            $('returnType').value = 'exchange';
+            $('returnNote').value = '';
             $('returnReason').value = '丢失';
             $('returnReasonCustom').value = '';
             $('returnReasonCustom').style.display = 'none';
@@ -2583,6 +2857,8 @@ document.querySelectorAll('.tab-item').forEach(tab => {
             const lossQty = borrowed - qty;
             let reason = $('returnReason').value;
             if (reason === '__custom__') reason = $('returnReasonCustom').value.trim();
+            const returnType = $('returnType').value;
+            const returnNote = $('returnNote').value.trim();
 
             if (qty <= 0 || qty > borrowed) return showToast('请输入有效的归还数量', 'error');
             if (lossQty > 0 && !reason) return showToast('请填写损耗原因', 'error');
@@ -2598,7 +2874,9 @@ document.querySelectorAll('.tab-item').forEach(tab => {
                     p_person_id: returnContext.person,
                     p_qty: qty,
                     p_loss_qty: lossQty,
-                    p_loss_reason: reason || null
+                    p_loss_reason: reason || null,
+                    p_return_type: returnType,
+                    p_return_note: returnNote || null
                 });
 
                 if (error) throw error;
@@ -2618,6 +2896,21 @@ document.querySelectorAll('.tab-item').forEach(tab => {
                 if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-lg"></i> 确认归还'; }
                 setStatus('已连接', 'ok');
             }
+        }
+
+        let lossViewMode = 'normal'; // 'normal' | 'defect'
+
+        function switchLossView(mode) {
+            lossViewMode = mode;
+            document.querySelectorAll('.loss-view-tab').forEach(el => {
+                const isActive = el.dataset.view === mode;
+                el.style.borderBottomColor = isActive ? 'var(--primary)' : 'transparent';
+                el.style.color = isActive ? 'var(--primary)' : 'var(--text-light)';
+                el.style.fontWeight = isActive ? '600' : '400';
+            });
+            // 切换表头列名
+            $('lossColExtra').textContent = mode === 'defect' ? '备注说明' : '金额';
+            loadLossStats();
         }
 
         // ========== Loss Tracking ==========
@@ -2643,46 +2936,70 @@ document.querySelectorAll('.tab-item').forEach(tab => {
                     q => q.eq('type', 'LOSS').gte('created_at', monthStart).lt('created_at', monthEnd)
                 );
 
-                // Apply person filter client-side (further narrow)
+                // Apply person & return_type filter
                 const filtered = (logs || []).filter(log => {
                     if (personFilter && log.person_id !== personFilter) return false;
-                    return true;
+                    if (lossViewMode === 'defect') {
+                        return log.metadata?.return_type === 'defect';
+                    }
+                    // Normal mode: exclude defect items (keep regular loss)
+                    return !log.metadata?.return_type || log.metadata?.return_type === 'exchange';
                 });
 
-                // Load item names from cache instead of querying inventory_items
+                // Load item names from cache
                 if (!allItemsCache.length) await loadAllItems();
                 const itemMap = {};
                 allItemsCache.forEach(i => itemMap[i.sku] = i);
 
-                // Stats
-                let totalQty = 0;
-                let totalAmount = 0;
-                filtered.forEach(l => {
-                    totalQty += l.quantity || 0;
-                    if (l.unit_price) totalAmount += (l.quantity || 0) * l.unit_price;
-                });
-
-                $('lossTotalCount').textContent = filtered.length;
-                $('lossTotalQty').textContent = totalQty;
-                $('lossTotalAmount').textContent = '¥' + totalAmount.toFixed(2);
+                // Stats (only for normal mode)
+                if (lossViewMode === 'defect') {
+                    $('lossStatGrid').style.display = 'none';
+                } else {
+                    $('lossStatGrid').style.display = 'grid';
+                    let totalQty = 0;
+                    let totalAmount = 0;
+                    filtered.forEach(l => {
+                        totalQty += l.quantity || 0;
+                        if (l.unit_price) totalAmount += (l.quantity || 0) * l.unit_price;
+                    });
+                    $('lossTotalCount').textContent = filtered.length;
+                    $('lossTotalQty').textContent = totalQty;
+                    $('lossTotalAmount').textContent = '¥' + totalAmount.toFixed(2);
+                }
 
                 // Table
                 const tbody = $('lossBody');
                 if (filtered.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><i class="bi bi-check-circle"></i><p>该月无损耗记录</p></div></td></tr>';
+                    const msg = lossViewMode === 'defect' ? '无待退供应商记录' : '该月无损耗记录';
+                    tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><i class="bi bi-check-circle"></i><p>' + msg + '</p></div></td></tr>';
                 } else {
-                    tbody.innerHTML = filtered.map(log => {
-                        const name = (itemMap[log.item_sku] || {}).name || '';
-                        return '<tr>' +
-                            '<td style="white-space:nowrap">' + formatTime(log.created_at) + '</td>' +
-                            '<td><span class="sku-badge">' + esc(log.item_sku) + '</span></td>' +
-                            '<td>' + esc(name) + '</td>' +
-                            '<td style="color:var(--danger);font-weight:600">' + log.quantity + '</td>' +
-                            '<td>¥' + ((log.unit_price || 0) * log.quantity).toFixed(2) + '</td>' +
-                            '<td>' + esc(log.metadata?.reason || '-') + '</td>' +
-                            '<td>' + esc(log.person_id || '-') + '</td>' +
-                            '</tr>';
-                    }).join('');
+                    if (lossViewMode === 'defect') {
+                        tbody.innerHTML = filtered.map(log => {
+                            const name = (itemMap[log.item_sku] || {}).name || '';
+                            return '<tr>' +
+                                '<td style="white-space:nowrap">' + formatTime(log.created_at) + '</td>' +
+                                '<td><span class="sku-badge">' + esc(log.item_sku) + '</span></td>' +
+                                '<td>' + esc(name) + '</td>' +
+                                '<td style="color:var(--danger);font-weight:600">' + log.quantity + '</td>' +
+                                '<td>' + esc(log.metadata?.return_note || '-') + '</td>' +
+                                '<td>' + esc(log.metadata?.reason || '-') + '</td>' +
+                                '<td>' + esc(log.person_id || '-') + '</td>' +
+                                '</tr>';
+                        }).join('');
+                    } else {
+                        tbody.innerHTML = filtered.map(log => {
+                            const name = (itemMap[log.item_sku] || {}).name || '';
+                            return '<tr>' +
+                                '<td style="white-space:nowrap">' + formatTime(log.created_at) + '</td>' +
+                                '<td><span class="sku-badge">' + esc(log.item_sku) + '</span></td>' +
+                                '<td>' + esc(name) + '</td>' +
+                                '<td style="color:var(--danger);font-weight:600">' + log.quantity + '</td>' +
+                                '<td>¥' + ((log.unit_price || 0) * log.quantity).toFixed(2) + '</td>' +
+                                '<td>' + esc(log.metadata?.reason || '-') + '</td>' +
+                                '<td>' + esc(log.person_id || '-') + '</td>' +
+                                '</tr>';
+                        }).join('');
+                    }
                 }
 
                 // Update person filter dropdown
@@ -2794,6 +3111,61 @@ document.querySelectorAll('.tab-item').forEach(tab => {
             }
         }
 
+        // ========== Quick Inbound (from inventory table) ==========
+        let qiContext = { sku: '', name: '', price: 0, stock: 0, safety: 0, location: '' };
+
+        function openQuickInbound(sku) {
+            qiContext.sku = sku;
+            const item = allItemsCache.find(i => i.sku === sku) || inventoryFullData.find(i => i.sku === sku) || {};
+            qiContext.name = item.name || '';
+            qiContext.price = item.price || 0;
+            qiContext.stock = item.total_stock || 0;
+            qiContext.safety = item.safety_stock || 0;
+            qiContext.location = item.location || '';
+            $('qiSku').textContent = sku;
+            $('qiName').textContent = qiContext.name || '-';
+            $('qiStock').textContent = qiContext.stock;
+            $('qiPrice').textContent = '¥' + qiContext.price.toFixed(2);
+            $('qiQty').value = 1;
+            $('qiError').textContent = '';
+            $('quickInboundModal').classList.add('show');
+            setTimeout(() => $('qiQty').focus(), 100);
+        }
+
+        function closeQuickInbound() {
+            $('quickInboundModal').classList.remove('show');
+        }
+
+        async function confirmQuickInbound() {
+            const qty = parseInt($('qiQty').value) || 0;
+            if (qty <= 0) return $('qiError').textContent = '入库数量必须大于 0';
+            if (!qiContext.name) return $('qiError').textContent = '物料名称缺失，无法入库';
+            setStatus('入库中...', 'wait');
+            try {
+                const { data, error } = await supabase.rpc('handle_inbound', {
+                    p_sku: qiContext.sku,
+                    p_name: qiContext.name,
+                    p_price: qiContext.price,
+                    p_qty: qty,
+                    p_safety_stock: qiContext.safety,
+                    p_location: qiContext.location || null,
+                    p_person: currentUser?.display_name || currentUser?.username || '未知'
+                });
+                if (error) throw error;
+                if (data && data.success) {
+                    showToast('快速入库成功: ' + qiContext.sku + ' x' + qty, 'success');
+                    closeQuickInbound();
+                    loadInventory();
+                } else {
+                    $('qiError').textContent = data?.message || '入库失败';
+                }
+            } catch (err) {
+                $('qiError').textContent = '入库失败: ' + err.message;
+            } finally {
+                setStatus('已连接', 'ok');
+            }
+        }
+
         // ========== Inbound (via RPC — atomic) ==========
         async function handleInbound() {
             const sku = $('in_sku').value.trim();
@@ -2853,6 +3225,33 @@ document.querySelectorAll('.tab-item').forEach(tab => {
             }
         }
 
+        // ========== SKU Replacement Check ==========
+        async function checkSkuReplacement(sku) {
+            try {
+                const { data } = await supabase
+                    .from('sku_replacements')
+                    .select('old_sku, new_sku, reason')
+                    .eq('new_sku', sku)
+                    .maybeSingle();
+                if (!data) return null;
+                const { data: oldItem } = await supabase
+                    .from('inventory_items')
+                    .select('sku, name, total_stock')
+                    .eq('sku', data.old_sku)
+                    .maybeSingle();
+                if (!oldItem || oldItem.total_stock <= 0) return null;
+                return {
+                    oldSku: data.old_sku,
+                    oldName: oldItem.name || data.old_sku,
+                    oldStock: oldItem.total_stock,
+                    reason: data.reason || ''
+                };
+            } catch(e) {
+                console.warn('checkSkuReplacement failed:', e);
+                return null;
+            }
+        }
+
         // ========== Outbound (via RPC) ==========
         async function handleOutbound() {
             const sku = $('out_sku').value.trim();
@@ -2862,6 +3261,11 @@ document.querySelectorAll('.tab-item').forEach(tab => {
             if (!sku) return showToast('请填写 SKU', 'error');
             if (!person) return showToast('请填写领用人', 'error');
             if (qty <= 0) return showToast('数量必须大于 0', 'error');
+            // 检查物料替换：旧刀库存未消耗完则拦截
+            const replacement = await checkSkuReplacement(sku);
+            if (replacement) {
+                return showToast('⚠ 旧刀具「' + replacement.oldSku + '」仍有库存 ' + replacement.oldStock + ' 件，请先消耗完毕再领用新刀具', 'error');
+            }
             if (!confirm('确认领用 ' + sku + ' x' + qty + '？\n领用人: ' + person)) return;
 
             const btn = $('btnOutbound');
@@ -3378,13 +3782,18 @@ document.querySelectorAll('.tab-item').forEach(tab => {
         window.openReturnModal = openReturnModal;
         window.closeReturnModal = closeReturnModal;
         window.confirmReturn = confirmReturn;
+        window.openQuickInbound = openQuickInbound;
+        window.closeQuickInbound = closeQuickInbound;
+        window.confirmQuickInbound = confirmQuickInbound;
         window.onReturnQtyChange = onReturnQtyChange;
         window.onLossReasonChange = onLossReasonChange;
         window.loadLossStats = loadLossStats;
+        window.switchLossView = switchLossView;
         window.editSafetyStock = editSafetyStock;
         window.editLocation = editLocation;
         window.editItemName = editItemName;
         window.onActiveSearch = onActiveSearch;
+        window.autoResizeInventoryTable = autoResizeInventoryTable;
         window.togglePersonGroup = togglePersonGroup;
         window.openPwModal = openPwModal;
         window.closePwModal = closePwModal;
@@ -3414,6 +3823,9 @@ document.querySelectorAll('.tab-item').forEach(tab => {
         window.closeSkuSupplierManager = closeSkuSupplierManager;
         window.addSkuSupplier = addSkuSupplier;
         window.deleteSkuSupplier = deleteSkuSupplier;
+        window.loadSkuReplacements = loadSkuReplacements;
+        window.addSkuReplacement = addSkuReplacement;
+        window.deleteSkuReplacement = deleteSkuReplacement;
 
         // Modal overlay close
         document.addEventListener('click', function(e) {
