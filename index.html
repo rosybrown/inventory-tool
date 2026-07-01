@@ -2317,7 +2317,7 @@ document.querySelectorAll('.tab-item').forEach(tab => {
                 if (isLow) lowCount++;
                 return `<tr>
                     <td><span class="sku-badge">${esc(item.sku)}</span></td>
-                    <td>${esc(item.name || '-')}</td>
+                    <td><span class="stock-editable" onclick="editItemName('${esc(item.sku)}', '${esc(item.name || '')}')" title="点击修改名称">${esc(item.name || '-')}</span></td>
                     <td>¥${(item.price || 0).toFixed(2)}</td>
                     <td class="${isLow ? 'stock-low' : 'stock-ok'}">${item.total_stock}</td>
                     <td><span class="stock-editable" onclick="editSafetyStock('${esc(item.sku)}', ${item.safety_stock || 0})" title="点击修改">${item.safety_stock || 0}</span></td>
@@ -2735,6 +2735,28 @@ document.querySelectorAll('.tab-item').forEach(tab => {
                 const { error } = await supabase.from('inventory_items').update({ location: trimmed || null }).eq('sku', sku);
                 if (error) throw error;
                 showToast('库位已更新', 'success');
+                loadInventory();
+            } catch (err) {
+                showToast('更新失败: ' + err.message, 'error');
+            } finally {
+                setStatus('已连接', 'ok');
+            }
+        }
+
+        // ========== Item Name Inline Edit ==========
+        async function editItemName(sku, currentVal) {
+            if (!currentUser || !['admin','warehouse','purchase'].includes(currentUser.role)) {
+                return showToast('无权限修改名称', 'error');
+            }
+            const newVal = prompt('修改名称 (SKU: ' + sku + ')', currentVal === '-' ? '' : currentVal);
+            if (newVal === null) return;
+            const trimmed = newVal.trim();
+            if (!trimmed) return showToast('名称不能为空', 'error');
+            setStatus('保存中...', 'wait');
+            try {
+                const { error } = await supabase.from('inventory_items').update({ name: trimmed }).eq('sku', sku);
+                if (error) throw error;
+                showToast('名称已更新', 'success');
                 loadInventory();
             } catch (err) {
                 showToast('更新失败: ' + err.message, 'error');
@@ -3361,6 +3383,7 @@ document.querySelectorAll('.tab-item').forEach(tab => {
         window.loadLossStats = loadLossStats;
         window.editSafetyStock = editSafetyStock;
         window.editLocation = editLocation;
+        window.editItemName = editItemName;
         window.onActiveSearch = onActiveSearch;
         window.togglePersonGroup = togglePersonGroup;
         window.openPwModal = openPwModal;
